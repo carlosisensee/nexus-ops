@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="pt-BR" class="light">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Nexus Ops — Marketing Hub</title>
+  <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet" />
+  <script id="tw-config">
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            'surface':                '#f8f9fa',
+            'surface-dim':            '#d9dadb',
+            'surface-container-lowest': '#ffffff',
+            'surface-container-low':  '#f3f4f5',
+            'surface-container':      '#edeeef',
+            'surface-container-high': '#e7e8e9',
+            'surface-container-highest': '#e1e3e4',
+            'on-surface':             '#191c1d',
+            'on-surface-variant':     '#434653',
+            'outline':                '#737784',
+            'outline-variant':        '#c3c6d5',
+            'primary':                '#00327d',
+            'secondary':              '#1b6d24',
+            'tertiary':               '#651f00',
+            'marketing':              '#6d28d9',
+            'error':                  '#ba1a1a',
+          },
+          fontFamily: {
+            headline: ['Manrope', 'sans-serif'],
+            body:     ['Inter', 'sans-serif'],
+            label:    ['Inter', 'sans-serif'],
+          },
+          borderRadius: { DEFAULT: '0.125rem', lg: '0.25rem', xl: '0.5rem', '2xl': '0.75rem', full: '9999px' },
+        },
+      },
+    };
+  </script>
+  <style>
+    * { box-sizing: border-box; }
+    .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+    .filled { font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+    .ghost-shadow { box-shadow: 0 20px 40px rgba(25,28,29,.06); }
+    .card { background: #fff; border-radius: 0.75rem; }
+    .tab-active { color: #6d28d9; border-bottom: 2px solid #6d28d9; }
+    .tab-inactive { color: #737784; border-bottom: 2px solid transparent; }
+    .tab-inactive:hover { color: #434653; }
+    .widget-card:hover { box-shadow: 0 8px 24px rgba(25,28,29,.1); }
+    .widget-card { transition: box-shadow .2s; }
+    .status-active { background:#f0fdf4; color:#166534; }
+    .status-paused { background:#fef9c3; color:#854d0e; }
+    .status-draft  { background:#f3f4f5; color:#434653; }
+    .btn-marketing { background: linear-gradient(135deg,#6d28d9,#7c3aed); color:#fff; border:none; cursor:pointer; transition:opacity .15s; }
+    .btn-marketing:hover { opacity:.9; }
+    .btn-ghost { background:none; border:1.5px solid #c3c6d5; color:#434653; cursor:pointer; transition:all .15s; }
+    .btn-ghost:hover { border-color:#6d28d9; color:#6d28d9; }
+    /* Tab panels */
+    .tab-panel { display:none; }
+    .tab-panel.active { display:block; }
+  </style>
+</head>
+<body class="bg-surface">
+
+<div id="nexus-main">
+  <div style="padding: 32px 36px; max-width: 1280px;">
+
+    <!-- Page header -->
+    <div class="flex items-start justify-between mb-8">
+      <div>
+        <div class="flex items-center gap-2 mb-1">
+          <span class="font-label text-xs uppercase tracking-widest text-on-surface-variant">Nexus Ops</span>
+          <span class="material-symbols-outlined text-[14px] text-outline">chevron_right</span>
+          <span class="font-label text-xs uppercase tracking-widest" style="color:#6d28d9;">Marketing</span>
+        </div>
+        <h1 class="font-headline text-[2rem] font-800 text-on-surface">Marketing Hub</h1>
+        <p class="font-body text-sm text-on-surface-variant mt-1">Widgets GTM, CRO, feeds e ferramentas de crescimento do site.</p>
+      </div>
+      <div class="flex items-center gap-3">
+        <button class="btn-ghost flex items-center gap-2 px-4 py-2 rounded-full font-label text-[13px]">
+          <span class="material-symbols-outlined text-[16px]">open_in_new</span>
+          Ver Site
+        </button>
+        <a href="widget-builder.html" class="btn-marketing flex items-center gap-2 px-5 py-2 rounded-full font-label text-[13px] font-600 no-underline">
+          <span class="material-symbols-outlined text-[16px]">add</span>
+          Novo Widget
+        </a>
+      </div>
+    </div>
+
+    <!-- KPI strip -->
+    <div class="grid grid-cols-4 gap-4 mb-8">
+      <div class="card ghost-shadow p-5">
+        <p class="font-label text-[10px] uppercase tracking-widest text-on-surface-variant mb-2">Widgets Ativos</p>
+        <div class="flex items-end gap-2">
+          <span class="font-headline text-[1.75rem] font-700 text-on-surface">2</span>
+          <span class="font-label text-[11px] text-on-surface-variant mb-1">de 4 criados</span>
+        </div>
+      </div>
+      <div class="card ghost-shadow p-5">
+        <p class="font-label text-[10px] uppercase tracking-widest text-on-surface-variant mb-2">Impressões (30d)</p>
+        <div class="flex items-end gap-2">
+          <span class="font-headline text-[1.75rem] font-700 text-on-surface">18.420</span>
+          <span class="font-label text-[11px] text-secondary mb-1 flex items-center gap-0.5">
+            <span class="material-symbols-outlined text-[12px]">arrow_upward</span>14%
+          </span>
+        </div>
+      </div>
+      <div class="card ghost-shadow p-5">
+        <p class="font-label text-[10px] uppercase tracking-widest text-on-surface-variant mb-2">CTR Médio</p>
+        <div class="flex items-end gap-2">
+          <span class="font-headline text-[1.75rem] font-700 text-on-surface">3.2%</span>
+          <span class="font-label text-[11px] text-secondary mb-1 flex items-center gap-0.5">
+            <span class="material-symbols-outlined text-[12px]">arrow_upward</span>0.4pp
+          </span>
+        </div>
+      </div>
+      <div class="card ghost-shadow p-5">
+        <p class="font-label text-[10px] uppercase tracking-widest text-on-surface-variant mb-2">Receita Atribuída</p>
+        <div class="flex items-end gap-2">
+          <span class="font-headline text-[1.75rem] font-700 text-on-surface">R$&nbsp;4.290</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tabs -->
+    <div class="flex items-center gap-0 mb-6 border-b border-outline-variant">
+      <button onclick="switchTab('widgets')" id="tab-widgets"
+              class="tab-btn px-5 py-3 font-label text-[13px] font-600 transition-colors tab-active">
+        Widgets GTM
+      </button>
+      <button onclick="switchTab('scripts')" id="tab-scripts"
+              class="tab-btn px-5 py-3 font-label text-[13px] font-600 transition-colors tab-inactive">
+        Scripts &amp; Tags
+      </button>
+      <button onclick="switchTab('cro')" id="tab-cro"
+              class="tab-btn px-5 py-3 font-label text-[13px] font-600 transition-colors tab-inactive">
+        CRO &amp; Analytics
+      </button>
+      <button onclick="switchTab('feeds')" id="tab-feeds"
+              class="tab-btn px-5 py-3 font-label text-[13px] font-600 transition-colors tab-inactive">
+        Feeds de Mídia
+      </button>
+    </div>
+
+    <!-- ── Tab: Widgets GTM ── -->
+    <div id="panel-widgets" class="tab-panel active">
+
+      <div class="grid grid-cols-3 gap-4">
+
+        <!-- Widget 1: Urgency Bar (ATIVO) -->
+        <div class="widget-card card ghost-shadow">
+          <div class="p-5">
+            <!-- Preview strip -->
+            <div class="rounded-xl mb-4 flex items-center justify-center overflow-hidden" style="height:72px; background:linear-gradient(135deg,#00327d,#0047ab);">
+              <div class="flex items-center gap-3 px-4">
+                <span class="font-body text-[13px] font-600 text-white">🔥 Frete grátis por tempo limitado!</span>
+                <span class="font-headline text-[13px] font-700 text-white px-2 py-0.5 rounded" style="background:rgba(255,255,255,.2);">02:45:10</span>
+                <span class="font-label text-[12px] font-600 text-white px-3 py-1 rounded" style="border:1px solid rgba(255,255,255,.4);">Ver oferta</span>
+              </div>
+            </div>
+            <div class="flex items-center justify-between mb-3">
+              <div>
+                <h4 class="font-headline text-[14px] font-700 text-on-surface">Barra de Urgência</h4>
+                <p class="font-body text-[12px] text-on-surface-variant">Countdown + CTA — Topo da página</p>
+              </div>
+              <span class="status-active font-label text-[11px] font-600 px-2.5 py-1 rounded-full">Ativo</span>
+            </div>
+            <!-- Mini metrics -->
+            <div class="grid grid-cols-3 gap-2 pt-3 border-t border-surface-container">
+              <div>
+                <p class="font-label text-[10px] uppercase tracking-wider text-outline">Impressões</p>
+                <p class="font-headline text-[15px] font-700 text-on-surface mt-0.5">12.840</p>
+              </div>
+              <div>
+                <p class="font-label text-[10px] uppercase tracking-wider text-outline">Cliques</p>
+                <p class="font-headline text-[15px] font-700 text-on-surface mt-0.5">411</p>
+              </div>
+              <div>
+                <p class="font-label text-[10px] uppercase tracking-wider text-outline">CTR</p>
+                <p class="font-headline text-[15px] font-700 text-secondary mt-0.5">3.2%</p>
+              </div>
+            </div>
+          </div>
+          <div class="flex border-t border-surface-container">
+            <a href="widget-builder.html?widget=urgency-bar" class="flex-1 flex items-center justify-center gap-1.5 py-3 font-label text-[12px] font-600 no-underline transition-colors hover:bg-surface-container-low" style="color:#6d28d9;">
+              <span class="material-symbols-outlined text-[15px]">edit</span>Editar
+            </a>
+            <div class="w-px bg-surface-container"></div>
+            <button class="flex-1 flex items-center justify-center gap-1.5 py-3 font-label text-[12px] font-600 text-on-surface-variant hover:bg-surface-container-low transition-colors">
+              <span class="material-symbols-outlined text-[15px]">analytics</span>Métricas
+            </button>
+            <div class="w-px bg-surface-container"></div>
+            <button class="flex-1 flex items-center justify-center gap-1.5 py-3 font-label text-[12px] font-600 text-on-surface-variant hover:bg-surface-container-low transition-colors">
+              <span class="material-symbols-outlined text-[15px]">code</span>GTM
+            </button>
+          </div>
+        </div>
+
+        <!-- Widget 2: Social Proof (PAUSADO) -->
+        <div class="widget-card card ghost-shadow">
+          <div class="p-5">
+            <div class="rounded-xl mb-4 flex items-center justify-start overflow-hidden" style="height:72px; background:#f3f4f5; padding:0 16px;">
+              <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-full bg-surface-container-highest flex items-center justify-center">
+                  <span class="material-symbols-outlined text-on-surface-variant text-[20px] filled">person</span>
+                </div>
+                <div>
+                  <p class="font-body text-[12px] font-600 text-on-surface">João de SP comprou agora</p>
+                  <p class="font-body text-[11px] text-on-surface-variant">Tapete Bege 200×300 — há 3 min</p>
+                </div>
+              </div>
+            </div>
+            <div class="flex items-center justify-between mb-3">
+              <div>
+                <h4 class="font-headline text-[14px] font-700 text-on-surface">Social Proof</h4>
+                <p class="font-body text-[12px] text-on-surface-variant">Notificação flutuante de compras</p>
+              </div>
+              <span class="status-paused font-label text-[11px] font-600 px-2.5 py-1 rounded-full">Pausado</span>
+            </div>
+            <div class="grid grid-cols-3 gap-2 pt-3 border-t border-surface-container">
+              <div>
+                <p class="font-label text-[10px] uppercase tracking-wider text-outline">Impressões</p>
+                <p class="font-headline text-[15px] font-700 text-on-surface mt-0.5">5.580</p>
+              </div>
+              <div>
+                <p class="font-label text-[10px] uppercase tracking-wider text-outline">Cliques</p>
+                <p class="font-headline text-[15px] font-700 text-on-surface mt-0.5">124</p>
+              </div>
+              <div>
+                <p class="font-label text-[10px] uppercase tracking-wider text-outline">CTR</p>
+                <p class="font-headline text-[15px] font-700 text-on-surface mt-0.5">2.2%</p>
+              </div>
+            </div>
+          </div>
+          <div class="flex border-t border-surface-container">
+            <button class="flex-1 flex items-center justify-center gap-1.5 py-3 font-label text-[12px] font-600 transition-colors hover:bg-surface-container-low" style="color:#6d28d9;">
+              <span class="material-symbols-outlined text-[15px]">edit</span>Editar
+            </button>
+            <div class="w-px bg-surface-container"></div>
+            <button class="flex-1 flex items-center justify-center gap-1.5 py-3 font-label text-[12px] font-600 text-secondary hover:bg-surface-container-low transition-colors">
+              <span class="material-symbols-outlined text-[15px]">play_arrow</span>Ativar
+            </button>
+          </div>
+        </div>
+
+        <!-- Widget 3: Novo (RASCUNHO) -->
+        <a href="widget-builder.html" class="widget-card card ghost-shadow flex flex-col items-center justify-center p-8 no-underline border-2 border-dashed border-outline-variant hover:border-marketing transition-colors" style="min-height:260px;">
+          <div class="w-12 h-12 rounded-2xl flex items-center justify-center mb-4" style="background:rgba(109,40,217,.08);">
+            <span class="material-symbols-outlined text-[24px]" style="color:#6d28d9;">add_circle</span>
+          </div>
+          <p class="font-headline text-[14px] font-700 text-on-surface text-center">Criar novo widget</p>
+          <p class="font-body text-[12px] text-on-surface-variant text-center mt-1">Popup, countdown, reviews, social proof e mais</p>
+        </a>
+
+      </div>
+
+      <!-- Widget types library -->
+      <div class="mt-8">
+        <h3 class="font-headline text-[15px] font-700 text-on-surface mb-4">Biblioteca de Widgets</h3>
+        <div class="grid grid-cols-4 gap-3">
+          <div class="p-4 rounded-xl bg-surface-container-low flex items-center gap-3 cursor-pointer hover:bg-surface-container transition-colors">
+            <span class="material-symbols-outlined text-[20px]" style="color:#6d28d9;">timer</span>
+            <div>
+              <p class="font-label text-[13px] font-600 text-on-surface">Barra de Urgência</p>
+              <p class="font-body text-[11px] text-on-surface-variant">Countdown + CTA</p>
+            </div>
+          </div>
+          <div class="p-4 rounded-xl bg-surface-container-low flex items-center gap-3 cursor-pointer hover:bg-surface-container transition-colors">
+            <span class="material-symbols-outlined text-[20px]" style="color:#6d28d9;">notifications_active</span>
+            <div>
+              <p class="font-label text-[13px] font-600 text-on-surface">Social Proof</p>
+              <p class="font-body text-[11px] text-on-surface-variant">Compras recentes</p>
+            </div>
+          </div>
+          <div class="p-4 rounded-xl bg-surface-container-low flex items-center gap-3 cursor-pointer hover:bg-surface-container transition-colors">
+            <span class="material-symbols-outlined text-[20px]" style="color:#6d28d9;">star_rate</span>
+            <div>
+              <p class="font-label text-[13px] font-600 text-on-surface">Widget de Reviews</p>
+              <p class="font-body text-[11px] text-on-surface-variant">Badge + carrossel</p>
+            </div>
+          </div>
+          <div class="p-4 rounded-xl bg-surface-container-low flex items-center gap-3 cursor-pointer hover:bg-surface-container transition-colors">
+            <span class="material-symbols-outlined text-[20px]" style="color:#6d28d9;">open_in_new</span>
+            <div>
+              <p class="font-label text-[13px] font-600 text-on-surface">Exit Intent Popup</p>
+              <p class="font-body text-[11px] text-on-surface-variant">Captura ao sair</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Tab: Scripts & Tags ── -->
+    <div id="panel-scripts" class="tab-panel">
+      <div class="card ghost-shadow p-8 flex flex-col items-center justify-center text-center" style="min-height:280px;">
+        <span class="material-symbols-outlined text-[40px] text-on-surface-variant mb-4">code</span>
+        <h3 class="font-headline text-[16px] font-700 text-on-surface">Scripts & Tags GTM</h3>
+        <p class="font-body text-[13px] text-on-surface-variant mt-2 max-w-sm">Gerencie scripts customizados, pixels de conversão e integrações via Google Tag Manager.</p>
+        <p class="font-label text-[12px] text-outline mt-4">Em desenvolvimento</p>
+      </div>
+    </div>
+
+    <!-- ── Tab: CRO & Analytics ── -->
+    <div id="panel-cro" class="tab-panel">
+      <div class="card ghost-shadow p-8 flex flex-col items-center justify-center text-center" style="min-height:280px;">
+        <span class="material-symbols-outlined text-[40px] text-on-surface-variant mb-4">analytics</span>
+        <h3 class="font-headline text-[16px] font-700 text-on-surface">CRO & Analytics</h3>
+        <p class="font-body text-[13px] text-on-surface-variant mt-2 max-w-sm">Heatmaps, testes A/B, funis de conversão e relatórios de UX integrados ao site.</p>
+        <p class="font-label text-[12px] text-outline mt-4">Em desenvolvimento</p>
+      </div>
+    </div>
+
+    <!-- ── Tab: Feeds ── -->
+    <div id="panel-feeds" class="tab-panel">
+      <div class="card ghost-shadow p-8 flex flex-col items-center justify-center text-center" style="min-height:280px;">
+        <span class="material-symbols-outlined text-[40px] text-on-surface-variant mb-4">share</span>
+        <h3 class="font-headline text-[16px] font-700 text-on-surface">Feeds de Mídia</h3>
+        <p class="font-body text-[13px] text-on-surface-variant mt-2 max-w-sm">Google Shopping, Meta Catalog e TikTok Shop — sincronização e monitoramento de status.</p>
+        <p class="font-label text-[12px] text-outline mt-4">Em desenvolvimento</p>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+  function switchTab(name) {
+    document.querySelectorAll('.tab-panel').forEach(function(p) { p.classList.remove('active'); });
+    document.querySelectorAll('.tab-btn').forEach(function(b) {
+      b.classList.remove('tab-active');
+      b.classList.add('tab-inactive');
+    });
+    document.getElementById('panel-' + name).classList.add('active');
+    var btn = document.getElementById('tab-' + name);
+    btn.classList.add('tab-active');
+    btn.classList.remove('tab-inactive');
+  }
+</script>
+
+<script>window.NEXUS_BASE = '../';</script>
+<script>window.NEXUS_PAGE = { module: 'marketing' };</script>
+<script src="../core/nexus-shell.js"></script>
+
+</body>
+</html>
