@@ -143,22 +143,103 @@
     /* Accordion sections */
     .section-header { cursor: pointer; user-select: none; }
     .section-header:hover { background: #f3f4f5; }
+
+    /* ── Builder layout ── */
+    #builder-wrap {
+      padding: 20px 24px;
+      max-width: 1400px;
+      display: flex;
+      flex-direction: column;
+      height: calc(100vh - 56px);
+    }
+    #builder-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 16px;
+      flex-shrink: 0;
+    }
+    #builder-body {
+      display: flex;
+      gap: 16px;
+      flex: 1;
+      overflow: hidden;
+      min-height: 0;
+    }
+    #builder-config {
+      width: 300px;
+      flex-shrink: 0;
+      padding: 0;
+      overflow-y: auto;
+    }
+    #builder-right {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      flex: 1;
+      overflow: hidden;
+      min-height: 0;
+    }
+    #builder-preview {
+      flex: 1;
+      overflow: hidden;
+      min-height: 280px;
+    }
+    #preview-area {
+      height: 100%;
+    }
+
+    /* ── Mobile: stack vertically ── */
+    @media (max-width: 767px) {
+      #builder-wrap {
+        height: auto;
+        padding: 16px;
+      }
+      #builder-body {
+        flex-direction: column;
+        overflow: visible;
+      }
+      #builder-config {
+        width: 100%;
+        max-height: 460px;
+      }
+      #builder-right {
+        overflow: visible;
+      }
+      #builder-preview {
+        min-height: 260px;
+        flex: none;
+      }
+      #preview-area {
+        min-height: 260px;
+      }
+      #code-output {
+        max-height: 200px;
+      }
+    }
+
+    /* ── Tablet ── */
+    @media (min-width: 768px) and (max-width: 1023px) {
+      #builder-wrap { padding: 16px 20px; }
+      #builder-config { width: 260px; }
+    }
   </style>
 </head>
 <body class="bg-surface">
 
 <div id="nexus-main">
-  <div style="padding: 24px 36px; max-width: 1400px; height: calc(100vh - 56px); display: flex; flex-direction: column;">
+  <!-- Builder wrapper: full-height on desktop, scrollable on mobile -->
+  <div id="builder-wrap">
 
     <!-- Page header (compact) -->
-    <div class="flex items-center justify-between mb-5" style="flex-shrink:0;">
+    <div id="builder-header">
       <div class="flex items-center gap-2">
         <a href="index.html" class="font-label text-xs text-on-surface-variant no-underline hover:text-on-surface">Marketing</a>
         <span class="material-symbols-outlined text-[14px] text-outline">chevron_right</span>
         <span class="font-label text-xs font-600 text-on-surface">Widget Builder</span>
       </div>
       <div class="flex items-center gap-3">
-        <span class="font-label text-[12px] text-on-surface-variant flex items-center gap-1">
+        <span class="font-label text-[12px] text-on-surface-variant hidden sm:flex items-center gap-1">
           <span class="w-2 h-2 rounded-full bg-secondary"></span>
           Preview ao vivo
         </span>
@@ -166,16 +247,17 @@
                 class="flex items-center gap-2 px-4 py-2 rounded-full font-label text-[13px] font-600 text-white transition-all"
                 style="background:linear-gradient(135deg,#6d28d9,#7c3aed);">
           <span class="material-symbols-outlined text-[16px]">content_copy</span>
-          Copiar Código GTM
+          <span class="hidden sm:inline">Copiar Código GTM</span>
+          <span class="sm:hidden">Copiar</span>
         </button>
       </div>
     </div>
 
     <!-- Main layout: Config | Preview+Code -->
-    <div class="flex gap-5 flex-1 overflow-hidden">
+    <div id="builder-body">
 
       <!-- ── LEFT: Config Panel ── -->
-      <div class="card ghost-shadow overflow-y-auto" style="width:320px; flex-shrink:0; padding:0;">
+      <div class="card ghost-shadow" id="builder-config">
 
         <!-- Widget type selector -->
         <div style="padding:16px 20px; border-bottom:1px solid #edeeef;">
@@ -311,10 +393,10 @@
       </div>
 
       <!-- ── RIGHT: Preview + Code ── -->
-      <div class="flex flex-col gap-4 flex-1 overflow-hidden">
+      <div id="builder-right">
 
         <!-- Preview -->
-        <div class="card ghost-shadow flex-1 overflow-hidden" style="min-height:300px;">
+        <div class="card ghost-shadow" id="builder-preview">
           <div id="preview-area">
             <!-- Browser chrome -->
             <div class="browser-chrome">
@@ -358,7 +440,7 @@
         </div>
 
         <!-- Code output -->
-        <div class="card ghost-shadow" style="flex-shrink:0;">
+        <div class="card ghost-shadow">
           <!-- Code tabs -->
           <div class="flex items-center border-b border-surface-container-high">
             <button onclick="switchRTab('code')" id="rtab-code"
@@ -417,9 +499,9 @@
         </div>
 
       </div>
-    </div>
-  </div>
-</div>
+    </div><!-- /builder-body -->
+  </div><!-- /builder-wrap -->
+</div><!-- /#nexus-main -->
 
 <script>
 // ─────────────────────────────────────────────────────
