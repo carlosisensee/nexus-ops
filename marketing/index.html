@@ -67,20 +67,20 @@
 <body class="bg-surface">
 
 <div id="nexus-main">
-  <div style="padding: 32px 36px; max-width: 1280px;">
+  <div class="px-4 py-6 sm:px-6 sm:py-8 lg:px-9" style="max-width: 1280px;">
 
     <!-- Page header -->
-    <div class="flex items-start justify-between mb-8">
+    <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between mb-8">
       <div>
         <div class="flex items-center gap-2 mb-1">
           <span class="font-label text-xs uppercase tracking-widest text-on-surface-variant">Nexus Ops</span>
           <span class="material-symbols-outlined text-[14px] text-outline">chevron_right</span>
           <span class="font-label text-xs uppercase tracking-widest" style="color:#6d28d9;">Marketing</span>
         </div>
-        <h1 class="font-headline text-[2rem] font-800 text-on-surface">Marketing Hub</h1>
+        <h1 class="font-headline text-[1.75rem] sm:text-[2rem] font-800 text-on-surface">Marketing Hub</h1>
         <p class="font-body text-sm text-on-surface-variant mt-1">Widgets GTM, CRO, feeds e ferramentas de crescimento do site.</p>
       </div>
-      <div class="flex items-center gap-3">
+      <div class="flex items-center gap-3 flex-shrink-0">
         <button class="btn-ghost flex items-center gap-2 px-4 py-2 rounded-full font-label text-[13px]">
           <span class="material-symbols-outlined text-[16px]">open_in_new</span>
           Ver Site
@@ -93,7 +93,7 @@
     </div>
 
     <!-- KPI strip -->
-    <div class="grid grid-cols-4 gap-4 mb-8">
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
       <div class="card ghost-shadow p-5">
         <p class="font-label text-[10px] uppercase tracking-widest text-on-surface-variant mb-2">Widgets Ativos</p>
         <div class="flex items-end gap-2">
@@ -127,30 +127,32 @@
       </div>
     </div>
 
-    <!-- Tabs -->
-    <div class="flex items-center gap-0 mb-6 border-b border-outline-variant">
-      <button onclick="switchTab('widgets')" id="tab-widgets"
-              class="tab-btn px-5 py-3 font-label text-[13px] font-600 transition-colors tab-active">
-        Widgets GTM
-      </button>
-      <button onclick="switchTab('scripts')" id="tab-scripts"
-              class="tab-btn px-5 py-3 font-label text-[13px] font-600 transition-colors tab-inactive">
-        Scripts &amp; Tags
-      </button>
-      <button onclick="switchTab('cro')" id="tab-cro"
-              class="tab-btn px-5 py-3 font-label text-[13px] font-600 transition-colors tab-inactive">
-        CRO &amp; Analytics
-      </button>
-      <button onclick="switchTab('feeds')" id="tab-feeds"
-              class="tab-btn px-5 py-3 font-label text-[13px] font-600 transition-colors tab-inactive">
-        Feeds de Mídia
-      </button>
+    <!-- Tabs (scrollable on mobile) -->
+    <div class="mb-6 border-b border-outline-variant overflow-x-auto">
+      <div class="flex items-center gap-0 min-w-max">
+        <button onclick="switchTab('widgets')" id="tab-widgets"
+                class="tab-btn px-4 py-3 sm:px-5 font-label text-[13px] font-600 transition-colors tab-active whitespace-nowrap">
+          Widgets GTM
+        </button>
+        <button onclick="switchTab('scripts')" id="tab-scripts"
+                class="tab-btn px-4 py-3 sm:px-5 font-label text-[13px] font-600 transition-colors tab-inactive whitespace-nowrap">
+          Scripts &amp; Tags
+        </button>
+        <button onclick="switchTab('cro')" id="tab-cro"
+                class="tab-btn px-4 py-3 sm:px-5 font-label text-[13px] font-600 transition-colors tab-inactive whitespace-nowrap">
+          CRO &amp; Analytics
+        </button>
+        <button onclick="switchTab('feeds')" id="tab-feeds"
+                class="tab-btn px-4 py-3 sm:px-5 font-label text-[13px] font-600 transition-colors tab-inactive whitespace-nowrap">
+          Feeds de Mídia
+        </button>
+      </div>
     </div>
 
     <!-- ── Tab: Widgets GTM ── -->
     <div id="panel-widgets" class="tab-panel active">
 
-      <div class="grid grid-cols-3 gap-4">
+      <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
 
         <!-- Widget 1: Urgency Bar (ATIVO) -->
         <div class="widget-card card ghost-shadow">
@@ -262,7 +264,7 @@
       <!-- Widget types library -->
       <div class="mt-8">
         <h3 class="font-headline text-[15px] font-700 text-on-surface mb-4">Biblioteca de Widgets</h3>
-        <div class="grid grid-cols-4 gap-3">
+        <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
           <div class="p-4 rounded-xl bg-surface-container-low flex items-center gap-3 cursor-pointer hover:bg-surface-container transition-colors">
             <span class="material-symbols-outlined text-[20px]" style="color:#6d28d9;">timer</span>
             <div>
