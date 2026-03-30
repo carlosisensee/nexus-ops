@@ -1,0 +1,24 @@
+[build]
+  publish = "."
+  functions = "netlify/functions"
+
+[functions]
+  node_bundler = "esbuild"
+  node_version = "20"
+
+# Variáveis de ambiente necessárias (configure no Netlify Dashboard → Site Settings → Environment Variables):
+#
+#   ANTHROPIC_API_KEY    → sua chave da API Anthropic (claude-haiku-4-5-20251001)
+#   IG_ACCESS_TOKEN      → token long-lived do Instagram Graph API (opcional — pode passar pelo frontend)
+#   IG_ACCOUNT_ID        → ID da conta Business do Instagram (opcional — pode passar pelo frontend)
+#
+# As functions aceitam os valores via headers (X-Instagram-Token, X-Account-Id)
+# quando as env vars não estiverem definidas, permitindo que o usuário configure
+# diretamente no painel do Nexus Ops.
+
+[[headers]]
+  for = "/*.html"
+  [headers.values]
+    X-Frame-Options = "SAMEORIGIN"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"

@@ -1,0 +1,1384 @@
+<!DOCTYPE html>
+<html lang="pt-BR" class="light">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Nexus Ops — Instagram Analytics</title>
+  <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet" />
+
+  <script id="tw-config">
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            'surface':                    '#f8f9fa',
+            'surface-container-lowest':   '#ffffff',
+            'surface-container-low':      '#f3f4f5',
+            'surface-container':          '#edeeef',
+            'surface-container-high':     '#e7e8e9',
+            'surface-container-highest':  '#e1e3e4',
+            'on-surface':                 '#191c1d',
+            'on-surface-variant':         '#434653',
+            'outline':                    '#737784',
+            'outline-variant':            '#c3c6d5',
+            'primary':                    '#00327d',
+            'secondary':                  '#1b6d24',
+            'marketing':                  '#6d28d9',
+            'error':                      '#ba1a1a',
+          },
+          fontFamily: {
+            headline: ['Manrope', 'sans-serif'],
+            body:     ['Inter', 'sans-serif'],
+            label:    ['Inter', 'sans-serif'],
+          },
+          borderRadius: { DEFAULT: '0.125rem', lg: '0.25rem', xl: '0.5rem', '2xl': '0.75rem', full: '9999px' },
+        },
+      },
+    };
+  </script>
+
+  <style>
+    * { box-sizing: border-box; }
+    .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+    .filled { font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+    .ghost-shadow { box-shadow: 0 20px 40px rgba(25,28,29,.06); }
+    .card { background: #fff; border-radius: 0.75rem; }
+
+    /* Instagram */
+    .ig-gradient { background: linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%); }
+    .ig-text { background: linear-gradient(45deg, #f09433, #dc2743, #bc1888); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+
+    /* Period buttons */
+    .period-btn { padding: 6px 18px; border-radius: 9999px; font-family: 'Inter', sans-serif; font-size: 12px; font-weight: 600; cursor: pointer; transition: all .15s; }
+    .period-btn.active { background: #6d28d9; color: #fff; border: none; }
+    .period-btn.inactive { background: transparent; border: 1.5px solid #c3c6d5; color: #434653; }
+    .period-btn.inactive:hover { border-color: #6d28d9; color: #6d28d9; }
+
+    /* Performance badges */
+    .badge-high { background: #f0fdf4; color: #166534; }
+    .badge-mid  { background: #fef9c3; color: #854d0e; }
+    .badge-low  { background: #fef2f2; color: #991b1b; }
+
+    /* Post cards */
+    .post-card { background: #fff; border-radius: 0.75rem; overflow: hidden; transition: box-shadow .2s, transform .2s; cursor: pointer; }
+    .post-card:hover { box-shadow: 0 12px 32px rgba(25,28,29,.12); transform: translateY(-1px); }
+
+    /* AI panel tabs */
+    .ai-tab { padding: 10px 14px; font-family: 'Inter', sans-serif; font-size: 12px; font-weight: 600; cursor: pointer; border-bottom: 2px solid transparent; transition: all .15s; color: #737784; white-space: nowrap; background: none; border-top: none; border-left: none; border-right: none; }
+    .ai-tab.active { color: #6d28d9; border-bottom-color: #6d28d9; }
+    .ai-tab:hover:not(.active) { color: #434653; }
+
+    /* AI insight blocks */
+    .ai-block-purple { background: #faf5ff; border-left: 3px solid #7c3aed; border-radius: 0 0.5rem 0.5rem 0; padding: 12px 14px; margin-bottom: 10px; }
+    .ai-block-green  { background: #f0fdf4; border-left: 3px solid #16a34a; border-radius: 0 0.5rem 0.5rem 0; padding: 12px 14px; margin-bottom: 10px; }
+    .ai-block-yellow { background: #fefce8; border-left: 3px solid #ca8a04; border-radius: 0 0.5rem 0.5rem 0; padding: 12px 14px; margin-bottom: 10px; }
+    .ai-block-red    { background: #fef2f2; border-left: 3px solid #ef4444; border-radius: 0 0.5rem 0.5rem 0; padding: 12px 14px; margin-bottom: 10px; }
+
+    /* Metric bars */
+    .metric-bar { height: 5px; background: #edeeef; border-radius: 9999px; overflow: hidden; }
+    .metric-bar-fill { height: 100%; border-radius: 9999px; }
+
+    /* Heatmap */
+    .heat-cell { width: 32px; height: 28px; border-radius: 4px; display: flex; align-items: center; justify-content: center; font-family: 'Inter', sans-serif; font-size: 10px; font-weight: 600; transition: transform .15s; cursor: default; }
+    .heat-cell:hover { transform: scale(1.15); z-index: 1; position: relative; }
+
+    /* Modal */
+    .modal-overlay { position: fixed; inset: 0; background: rgba(25,28,29,.55); z-index: 200; display: flex; align-items: center; justify-content: center; padding: 16px; backdrop-filter: blur(2px); }
+    .modal-overlay.hidden { display: none !important; }
+    .modal-box { background: #fff; border-radius: 1rem; padding: 28px; max-width: 500px; width: 100%; box-shadow: 0 32px 64px rgba(0,0,0,.18); }
+
+    /* Animations */
+    @keyframes ai-pulse { 0%,100% { opacity:1; } 50% { opacity:.45; } }
+    .ai-loading span { animation: ai-pulse 1.4s ease-in-out infinite; }
+
+    @keyframes fade-in { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:translateY(0); } }
+    .fade-in { animation: fade-in .3s ease forwards; }
+
+    .demo-strip { background: linear-gradient(90deg, #faf5ff, #f5f3ff); border: 1px solid #ddd6fe; border-radius: 0.75rem; padding: 11px 16px; margin-bottom: 20px; display: flex; align-items: center; gap: 10px; }
+
+    /* Input fields — underline style (DESIGN.md: "no bounding box") */
+    .field-input {
+      width: 100%; font-family: 'Inter', sans-serif; font-size: 14px; color: #191c1d;
+      background: #f3f4f5; border: none; border-bottom: 2px solid #c3c6d5;
+      padding: 9px 12px; border-radius: 4px 4px 0 0; outline: none; transition: border-color .15s;
+    }
+    .field-input:focus { border-bottom-color: #6d28d9; }
+    .field-label { font-family: 'Inter', sans-serif; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: #737784; display: block; margin-bottom: 6px; }
+
+    /* Type pill */
+    .type-reel     { background: #f3e8ff; color: #6d28d9; }
+    .type-carousel { background: #dbeafe; color: #1d4ed8; }
+    .type-image    { background: #e0f2fe; color: #0369a1; }
+  </style>
+</head>
+<body class="bg-surface">
+
+<div id="nexus-main">
+<div class="px-4 py-6 sm:px-6 sm:py-8 lg:px-9" style="max-width: 1400px;">
+
+  <!-- ── Page Header ───────────────────────────────────────── -->
+  <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between mb-5">
+    <div>
+      <div class="flex items-center gap-2 mb-1">
+        <a href="index.html" class="font-label text-xs uppercase tracking-widest text-on-surface-variant no-underline hover:text-on-surface transition-colors">Marketing</a>
+        <span class="material-symbols-outlined text-[13px] text-outline">chevron_right</span>
+        <span class="font-label text-xs uppercase tracking-widest" style="color:#6d28d9;">Instagram</span>
+      </div>
+      <div class="flex items-center gap-3 flex-wrap">
+        <h1 class="font-headline text-[1.75rem] sm:text-[2rem] font-800 text-on-surface">Instagram Analytics</h1>
+        <span id="conn-badge" class="font-label text-[11px] font-600 px-3 py-1 rounded-full" style="background:#fdf4ff;color:#7c3aed;">● Modo Demo</span>
+      </div>
+      <p class="font-body text-sm text-on-surface-variant mt-1">Performance de postagens, análise com IA e recomendações de crescimento.</p>
+    </div>
+    <div class="flex items-center gap-3 flex-shrink-0">
+      <button onclick="openSettings()" class="flex items-center gap-1.5 px-4 py-2.5 rounded-full font-label text-[13px] font-600 transition-all" style="border:1.5px solid #c3c6d5;background:#fff;cursor:pointer;color:#434653;">
+        <span class="material-symbols-outlined text-[15px]">settings</span>
+        Configurar API
+      </button>
+      <button onclick="exportReport()" class="flex items-center gap-1.5 px-5 py-2.5 rounded-full font-label text-[13px] font-600 text-white" style="background:linear-gradient(135deg,#6d28d9,#7c3aed);border:none;cursor:pointer;">
+        <span class="material-symbols-outlined text-[15px]">download</span>
+        Exportar
+      </button>
+    </div>
+  </div>
+
+  <!-- ── Marketing Sub-Nav ────────────────────────────────────── -->
+  <div class="mb-6 overflow-x-auto" id="mkt-subnav" style="border-bottom:1px solid #c3c6d5;">
+    <div class="flex items-center min-w-max">
+      <a href="index.html" class="mkt-tab px-4 py-3 sm:px-5 font-label text-[13px] font-600 text-on-surface-variant border-b-2 border-transparent whitespace-nowrap no-underline transition-colors hover:text-on-surface">Widgets GTM</a>
+      <a href="index.html" class="mkt-tab px-4 py-3 sm:px-5 font-label text-[13px] font-600 text-on-surface-variant border-b-2 border-transparent whitespace-nowrap no-underline transition-colors hover:text-on-surface">Scripts &amp; Tags</a>
+      <a href="index.html" class="mkt-tab px-4 py-3 sm:px-5 font-label text-[13px] font-600 text-on-surface-variant border-b-2 border-transparent whitespace-nowrap no-underline transition-colors hover:text-on-surface">CRO &amp; Analytics</a>
+      <a href="index.html" class="mkt-tab px-4 py-3 sm:px-5 font-label text-[13px] font-600 text-on-surface-variant border-b-2 border-transparent whitespace-nowrap no-underline transition-colors hover:text-on-surface">Feeds de Mídia</a>
+      <span class="mkt-tab flex items-center gap-1.5 px-4 py-3 sm:px-5 font-label text-[13px] font-600 whitespace-nowrap border-b-2" style="color:#6d28d9;border-color:#6d28d9;cursor:default;">
+        <span class="material-symbols-outlined text-[14px] filled">photo_camera</span>Instagram
+      </span>
+    </div>
+  </div>
+
+  <!-- ── Demo Strip ─────────────────────────────────────────── -->
+  <div id="demo-strip" class="demo-strip">
+    <span class="material-symbols-outlined text-[17px]" style="color:#7c3aed;flex-shrink:0;">info</span>
+    <p class="font-body text-[13px] text-on-surface-variant flex-1">
+      Dados simulados de uma conta de tapetes/decoração.
+      <button onclick="openSettings()" style="color:#6d28d9;background:none;border:none;cursor:pointer;font-family:'Inter',sans-serif;font-size:13px;font-weight:600;text-decoration:underline;padding:0;">
+        Conecte sua conta real →
+      </button>
+    </p>
+    <button onclick="document.getElementById('demo-strip').remove()" style="background:none;border:none;cursor:pointer;color:#9ca3af;flex-shrink:0;">
+      <span class="material-symbols-outlined text-[16px]">close</span>
+    </button>
+  </div>
+
+  <!-- ── Account Card ──────────────────────────────────────── -->
+  <div class="card ghost-shadow p-5 mb-6 flex flex-col sm:flex-row sm:items-center gap-4">
+    <div class="w-14 h-14 rounded-full ig-gradient flex items-center justify-center flex-shrink-0">
+      <span class="material-symbols-outlined text-white text-[26px] filled">photo_camera</span>
+    </div>
+    <div class="flex-1 min-w-0">
+      <div class="flex items-center gap-2 flex-wrap mb-0.5">
+        <span class="font-headline text-[17px] font-700 text-on-surface" id="acct-username">@sua_loja_oficial</span>
+        <span class="material-symbols-outlined text-[15px] filled" style="color:#0095f6;">verified</span>
+        <span class="font-label text-[10px] font-600 px-2 py-0.5 rounded-full" style="background:#eff6ff;color:#1d4ed8;">Business</span>
+      </div>
+      <p class="font-body text-[12px] text-on-surface-variant">Tapetes &amp; decoração de interiores • São Paulo, Brasil</p>
+    </div>
+    <div class="flex gap-5 sm:gap-8 flex-shrink-0">
+      <div class="text-center">
+        <p class="font-headline text-[19px] font-700 text-on-surface">12.840</p>
+        <p class="font-label text-[10px] uppercase tracking-wide text-on-surface-variant">Seguidores</p>
+      </div>
+      <div class="text-center">
+        <p class="font-headline text-[19px] font-700 text-on-surface">423</p>
+        <p class="font-label text-[10px] uppercase tracking-wide text-on-surface-variant">Seguindo</p>
+      </div>
+      <div class="text-center">
+        <p class="font-headline text-[19px] font-700 text-on-surface">187</p>
+        <p class="font-label text-[10px] uppercase tracking-wide text-on-surface-variant">Posts</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Period Selector ───────────────────────────────────── -->
+  <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-5">
+    <div class="flex items-center gap-2">
+      <button onclick="setPeriod(7)"  id="btn-7"  class="period-btn inactive">7 dias</button>
+      <button onclick="setPeriod(30)" id="btn-30" class="period-btn active">30 dias</button>
+      <button onclick="setPeriod(90)" id="btn-90" class="period-btn inactive">90 dias</button>
+    </div>
+    <p class="font-body text-[12px] text-on-surface-variant" id="period-label">1 Mar 2026 – 30 Mar 2026</p>
+  </div>
+
+  <!-- ── KPI Strip ─────────────────────────────────────────── -->
+  <div class="grid grid-cols-2 xl:grid-cols-4 gap-4 mb-7">
+    <div class="card ghost-shadow p-5">
+      <p class="font-label text-[10px] uppercase tracking-widest text-on-surface-variant mb-2">Alcance Total</p>
+      <div class="flex items-end gap-2">
+        <span class="font-headline text-[1.75rem] font-700 text-on-surface">98,4K</span>
+        <span class="font-label text-[11px] mb-1 flex items-center gap-0.5" style="color:#16a34a;">
+          <span class="material-symbols-outlined text-[12px]">arrow_upward</span>+18%
+        </span>
+      </div>
+      <p class="font-body text-[11px] text-on-surface-variant mt-0.5">vs. período anterior</p>
+    </div>
+    <div class="card ghost-shadow p-5">
+      <p class="font-label text-[10px] uppercase tracking-widest text-on-surface-variant mb-2">Impressões</p>
+      <div class="flex items-end gap-2">
+        <span class="font-headline text-[1.75rem] font-700 text-on-surface">142K</span>
+        <span class="font-label text-[11px] mb-1 flex items-center gap-0.5" style="color:#16a34a;">
+          <span class="material-symbols-outlined text-[12px]">arrow_upward</span>+12%
+        </span>
+      </div>
+      <p class="font-body text-[11px] text-on-surface-variant mt-0.5">vs. período anterior</p>
+    </div>
+    <div class="card ghost-shadow p-5">
+      <p class="font-label text-[10px] uppercase tracking-widest text-on-surface-variant mb-2">Eng. Médio</p>
+      <div class="flex items-end gap-2">
+        <span class="font-headline text-[1.75rem] font-700 text-on-surface">4,8%</span>
+        <span class="font-label text-[11px] mb-1 flex items-center gap-0.5" style="color:#16a34a;">
+          <span class="material-symbols-outlined text-[12px]">arrow_upward</span>+0.6pp
+        </span>
+      </div>
+      <p class="font-body text-[11px] text-on-surface-variant mt-0.5">setor médio: 2,1%</p>
+    </div>
+    <div class="card ghost-shadow p-5">
+      <p class="font-label text-[10px] uppercase tracking-widest text-on-surface-variant mb-2">Melhor Formato</p>
+      <div class="flex items-end gap-2">
+        <span class="font-headline text-[1.5rem] font-700 text-on-surface">Carrossel</span>
+        <span class="material-symbols-outlined text-[18px] mb-1 filled" style="color:#6d28d9;">auto_graph</span>
+      </div>
+      <p class="font-body text-[11px] text-on-surface-variant mt-0.5">7,97% eng. médio</p>
+    </div>
+  </div>
+
+  <!-- ── Main Grid: Posts + AI Panel ──────────────────────── -->
+  <div class="flex flex-col xl:flex-row gap-6 mb-7">
+
+    <!-- Posts Feed -->
+    <div class="flex-1 min-w-0">
+      <div class="flex items-center justify-between mb-4">
+        <h2 class="font-headline text-[15px] font-700 text-on-surface">Posts do Período <span class="font-body text-[13px] text-on-surface-variant font-400">(12)</span></h2>
+        <select onchange="sortPosts(this.value)" class="font-label text-[12px] text-on-surface-variant px-3 py-1.5 rounded-full border border-outline-variant bg-white cursor-pointer" style="outline:none;">
+          <option value="engagement">↓ Engajamento</option>
+          <option value="reach">↓ Alcance</option>
+          <option value="date">↓ Data</option>
+          <option value="impressions">↓ Impressões</option>
+          <option value="saves">↓ Saves</option>
+        </select>
+      </div>
+      <div id="posts-grid" class="grid grid-cols-1 sm:grid-cols-2 gap-4"></div>
+    </div>
+
+    <!-- AI Insights Panel -->
+    <div class="xl:w-[340px] flex-shrink-0">
+      <div class="card ghost-shadow sticky" style="top:16px;">
+        <!-- AI Header -->
+        <div class="p-4 border-b border-surface-container">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-2">
+              <div class="w-8 h-8 rounded-xl flex items-center justify-center" style="background:linear-gradient(135deg,#6d28d9,#7c3aed);">
+                <span class="material-symbols-outlined text-white text-[15px] filled">auto_awesome</span>
+              </div>
+              <div>
+                <p class="font-headline text-[14px] font-700 text-on-surface">Análise com IA</p>
+                <p class="font-body text-[10px] text-on-surface-variant">últimos 30 dias</p>
+              </div>
+            </div>
+            <button onclick="regenerateAI()" id="ai-regen-btn" class="flex items-center gap-1 font-label text-[11px] font-600 px-2.5 py-1.5 rounded-full transition-all" style="background:#f3f0ff;color:#6d28d9;border:none;cursor:pointer;">
+              <span class="material-symbols-outlined text-[13px]">refresh</span>Atualizar
+            </button>
+          </div>
+        </div>
+        <!-- AI Tabs -->
+        <div class="flex border-b border-surface-container overflow-x-auto">
+          <button onclick="switchAITab('resumo')"    id="aitab-resumo"    class="ai-tab active">Resumo</button>
+          <button onclick="switchAITab('padroes')"   id="aitab-padroes"   class="ai-tab">Padrões</button>
+          <button onclick="switchAITab('sugestoes')" id="aitab-sugestoes" class="ai-tab">Sugestões</button>
+          <button onclick="switchAITab('comp')"      id="aitab-comp"      class="ai-tab">Comparativo</button>
+        </div>
+        <!-- AI Content -->
+        <div class="overflow-y-auto" style="max-height: 500px;">
+          <div id="ai-panel-resumo"    class="ai-panel p-4"></div>
+          <div id="ai-panel-padroes"   class="ai-panel p-4 hidden"></div>
+          <div id="ai-panel-sugestoes" class="ai-panel p-4 hidden"></div>
+          <div id="ai-panel-comp"      class="ai-panel p-4 hidden"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Charts Row ────────────────────────────────────────── -->
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-7">
+
+    <!-- Line: Reach over time -->
+    <div class="card ghost-shadow p-5 lg:col-span-2">
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="font-headline text-[14px] font-700 text-on-surface">Alcance &amp; Impressões ao Longo do Período</h3>
+        <div class="flex items-center gap-3">
+          <div class="flex items-center gap-1.5">
+            <div class="w-3 h-3 rounded-full" style="background:#6d28d9;"></div>
+            <span class="font-label text-[11px] text-on-surface-variant">Alcance</span>
+          </div>
+          <div class="flex items-center gap-1.5">
+            <div class="w-3 h-3 rounded-full" style="background:#a78bfa;"></div>
+            <span class="font-label text-[11px] text-on-surface-variant">Impressões</span>
+          </div>
+        </div>
+      </div>
+      <canvas id="chart-reach" style="max-height:200px;"></canvas>
+    </div>
+
+    <!-- Doughnut: Engagement by type -->
+    <div class="card ghost-shadow p-5">
+      <h3 class="font-headline text-[14px] font-700 text-on-surface mb-4">Engajamento por Formato</h3>
+      <div style="max-height:180px;position:relative;">
+        <canvas id="chart-types"></canvas>
+      </div>
+      <div class="mt-4 space-y-2">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <div class="w-3 h-3 rounded-sm" style="background:#6d28d9;flex-shrink:0;"></div>
+            <span class="font-label text-[12px] text-on-surface">Carrossel</span>
+          </div>
+          <span class="font-headline text-[13px] font-700 text-on-surface">7,97%</span>
+        </div>
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <div class="w-3 h-3 rounded-sm" style="background:#7c3aed;flex-shrink:0;"></div>
+            <span class="font-label text-[12px] text-on-surface">Reels</span>
+          </div>
+          <span class="font-headline text-[13px] font-700 text-on-surface">6,37%</span>
+        </div>
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <div class="w-3 h-3 rounded-sm" style="background:#c4b5fd;flex-shrink:0;"></div>
+            <span class="font-label text-[12px] text-on-surface">Imagens</span>
+          </div>
+          <span class="font-headline text-[13px] font-700 text-on-surface">2,56%</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Heatmap: Best hours ───────────────────────────────── -->
+  <div class="card ghost-shadow p-5 mb-6">
+    <div class="flex items-start justify-between mb-4 flex-wrap gap-2">
+      <div>
+        <h3 class="font-headline text-[14px] font-700 text-on-surface">Melhor Horário para Postar</h3>
+        <p class="font-body text-[12px] text-on-surface-variant mt-0.5">Engajamento médio por hora do dia (baseado nos últimos 90 dias)</p>
+      </div>
+      <div class="flex items-center gap-2">
+        <span class="font-label text-[11px] text-on-surface-variant">Menor</span>
+        <div class="flex gap-0.5">
+          <div class="w-4 h-4 rounded-sm" style="background:#f3f0ff;"></div>
+          <div class="w-4 h-4 rounded-sm" style="background:#ddd6fe;"></div>
+          <div class="w-4 h-4 rounded-sm" style="background:#a78bfa;"></div>
+          <div class="w-4 h-4 rounded-sm" style="background:#7c3aed;"></div>
+          <div class="w-4 h-4 rounded-sm" style="background:#4c1d95;"></div>
+        </div>
+        <span class="font-label text-[11px] text-on-surface-variant">Maior</span>
+      </div>
+    </div>
+    <div id="heatmap-container" class="overflow-x-auto pb-2"></div>
+  </div>
+
+</div><!-- end main wrapper -->
+</div><!-- end nexus-main -->
+
+<!-- ── Settings Modal ────────────────────────────────────── -->
+<div id="settings-modal" class="modal-overlay hidden">
+  <div class="modal-box">
+    <div class="flex items-center justify-between mb-6">
+      <div class="flex items-center gap-3">
+        <div class="w-11 h-11 rounded-xl ig-gradient flex items-center justify-center flex-shrink-0">
+          <span class="material-symbols-outlined text-white text-[20px] filled">photo_camera</span>
+        </div>
+        <div>
+          <h3 class="font-headline text-[17px] font-700 text-on-surface">Conectar Instagram</h3>
+          <p class="font-body text-[12px] text-on-surface-variant">Instagram Graph API v20</p>
+        </div>
+      </div>
+      <button onclick="closeSettings()" style="background:none;border:none;cursor:pointer;color:#9ca3af;">
+        <span class="material-symbols-outlined text-[22px]">close</span>
+      </button>
+    </div>
+
+    <div class="space-y-4">
+      <div>
+        <label class="field-label">Instagram Business Account ID</label>
+        <input id="inp-account-id" type="text" placeholder="17841400000000000" class="field-input" />
+        <p class="font-body text-[11px] text-on-surface-variant mt-1.5">Meta Business Suite → Configurações → ID da conta Instagram</p>
+      </div>
+
+      <div>
+        <label class="field-label">Access Token (Long-lived)</label>
+        <input id="inp-token" type="password" placeholder="EAAxxxxxxx..." class="field-input" />
+        <p class="font-body text-[11px] text-on-surface-variant mt-1">Token válido por 60 dias. <a href="https://developers.facebook.com/tools/explorer" target="_blank" style="color:#6d28d9;text-decoration:underline;">Gerar no Graph API Explorer →</a></p>
+      </div>
+
+      <div class="p-4 rounded-xl" style="background:#fdf4ff;border:1px solid #e9d5ff;">
+        <p class="font-label text-[12px] font-700 mb-1" style="color:#6d28d9;">Permissões necessárias no Meta App</p>
+        <div class="flex flex-wrap gap-1.5">
+          <span class="font-label text-[10px] px-2 py-0.5 rounded" style="background:#ede9fe;color:#5b21b6;">instagram_basic</span>
+          <span class="font-label text-[10px] px-2 py-0.5 rounded" style="background:#ede9fe;color:#5b21b6;">instagram_manage_insights</span>
+          <span class="font-label text-[10px] px-2 py-0.5 rounded" style="background:#ede9fe;color:#5b21b6;">pages_show_list</span>
+          <span class="font-label text-[10px] px-2 py-0.5 rounded" style="background:#ede9fe;color:#5b21b6;">pages_read_engagement</span>
+        </div>
+      </div>
+
+      <div class="flex gap-3 pt-1">
+        <button onclick="closeSettings()" class="flex-1 py-3 rounded-xl font-label text-[13px] font-600 transition-all" style="border:1.5px solid #c3c6d5;background:none;cursor:pointer;color:#434653;">
+          Cancelar
+        </button>
+        <button onclick="saveSettings()" class="flex-1 py-3 rounded-xl font-label text-[13px] font-600 text-white" style="background:linear-gradient(135deg,#6d28d9,#7c3aed);border:none;cursor:pointer;">
+          Conectar &amp; Sincronizar
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Post Detail Modal ──────────────────────────────────── -->
+<div id="post-modal" class="modal-overlay hidden">
+  <div class="modal-box" style="max-width:560px;">
+    <div class="flex items-center justify-between mb-4">
+      <h3 class="font-headline text-[16px] font-700 text-on-surface">Detalhe do Post</h3>
+      <button onclick="closePostModal()" style="background:none;border:none;cursor:pointer;color:#9ca3af;">
+        <span class="material-symbols-outlined text-[22px]">close</span>
+      </button>
+    </div>
+    <div id="post-modal-content"></div>
+  </div>
+</div>
+
+<!-- ── JavaScript ─────────────────────────────────────────── -->
+<script>
+'use strict';
+
+// ── MOCK DATA ──────────────────────────────────────────────────────────────
+
+var MOCK_POSTS = [
+  {
+    id: '1',
+    caption: 'Nova coleção de tapetes persas chegou! 🏠✨ Qualidade premium para transformar seu lar. Cada peça é única, feita à mão por artesãos especializados. Link na bio para ver todos os modelos. #tapetes #decoracao #homedesign #tapetepersa #decoracaodecasa',
+    media_type: 'REEL',
+    timestamp: '2026-03-28T10:00:00Z',
+    like_count: 847, comments_count: 43, shares: 129, saves: 312,
+    impressions: 18420, reach: 14200, video_views: 9840,
+    thumb_color: 'linear-gradient(135deg,#6d28d9,#7c3aed)',
+    thumb_icon: 'play_circle',
+  },
+  {
+    id: '2',
+    caption: '5 formas de usar tapetes para transformar sua sala! 🛋️ Deslize para ver cada ambiente → Do minimalista ao maximalista, temos o tapete certo pra você. #decoracao #sala #tapete #homedecor #designdeinteriores',
+    media_type: 'CAROUSEL_ALBUM',
+    timestamp: '2026-03-25T14:00:00Z',
+    like_count: 612, comments_count: 38, shares: 84, saves: 248,
+    impressions: 14100, reach: 13800, video_views: 0,
+    thumb_color: 'linear-gradient(135deg,#0ea5e9,#0284c7)',
+    thumb_icon: 'view_carousel',
+  },
+  {
+    id: '3',
+    caption: 'Tapete geométrico moderno — novo no estoque! 🔷 Perfeito para salas contemporâneas. Disponível em 3 tamanhos. #tapetesgeometricos #decoracaomoderna #novidade',
+    media_type: 'IMAGE',
+    timestamp: '2026-03-22T09:00:00Z',
+    like_count: 284, comments_count: 12, shares: 22, saves: 47,
+    impressions: 11200, reach: 11800, video_views: 0,
+    thumb_color: 'linear-gradient(135deg,#0891b2,#0e7490)',
+    thumb_icon: 'image',
+  },
+  {
+    id: '4',
+    caption: 'Como escolher o tapete certo para cada ambiente? 🤔 Neste Reel, mostramos tudo: tamanho ideal, textura, cor e posicionamento. Salva para não esquecer! #dicasdedecoração #tapetes #como #tutorial #homedecor',
+    media_type: 'REEL',
+    timestamp: '2026-03-20T11:00:00Z',
+    like_count: 723, comments_count: 56, shares: 98, saves: 289,
+    impressions: 16800, reach: 13900, video_views: 8210,
+    thumb_color: 'linear-gradient(135deg,#7c3aed,#6d28d9)',
+    thumb_icon: 'play_circle',
+  },
+  {
+    id: '5',
+    caption: 'Promoção relâmpago! ⚡ Até 40% OFF em tapetes selecionados. Só até amanhã. Acesse o link na bio. #promocao #sale #tapetes #descontão',
+    media_type: 'IMAGE',
+    timestamp: '2026-03-18T16:00:00Z',
+    like_count: 198, comments_count: 8, shares: 31, saves: 24,
+    impressions: 9800, reach: 9200, video_views: 0,
+    thumb_color: 'linear-gradient(135deg,#f59e0b,#d97706)',
+    thumb_icon: 'image',
+  },
+  {
+    id: '6',
+    caption: 'Antes e Depois: como um tapete muda TUDO na decoração 😍 Deslize para ver a transformação completa do apartamento da nossa cliente Ana, em SP. Impressionante né? ❤️ #antesedepois #transformação #decoracao #tapetes #homedecor #apartamento',
+    media_type: 'CAROUSEL_ALBUM',
+    timestamp: '2026-03-15T10:00:00Z',
+    like_count: 891, comments_count: 67, shares: 143, saves: 421,
+    impressions: 17200, reach: 16800, video_views: 0,
+    thumb_color: 'linear-gradient(135deg,#1d4ed8,#1e40af)',
+    thumb_icon: 'view_carousel',
+  },
+  {
+    id: '7',
+    caption: 'Bastidores: como é feito um tapete artesanal na nossa fábrica 🏭 Cada etapa do processo, desde a escolha dos fios até o acabamento final. #bastidores #artesanal #fabricação #tapetes',
+    media_type: 'REEL',
+    timestamp: '2026-03-12T18:00:00Z',
+    like_count: 187, comments_count: 14, shares: 19, saves: 38,
+    impressions: 12400, reach: 12100, video_views: 4320,
+    thumb_color: 'linear-gradient(135deg,#64748b,#475569)',
+    thumb_icon: 'play_circle',
+  },
+  {
+    id: '8',
+    caption: 'Tapete outdoor coleção primavera 🌸 Resistente à chuva e ao sol, sem perder o charme. Ideal para varandas e jardins. #tapeteoutdoor #varanda #primavera #decoracaoexterna',
+    media_type: 'IMAGE',
+    timestamp: '2026-03-10T08:00:00Z',
+    like_count: 201, comments_count: 9, shares: 16, saves: 28,
+    impressions: 10200, reach: 10600, video_views: 0,
+    thumb_color: 'linear-gradient(135deg,#16a34a,#15803d)',
+    thumb_icon: 'image',
+  },
+  {
+    id: '9',
+    caption: 'Lookbook: decoração minimalista 2026 🤍 Nossas escolhas favoritas de tapetes para quem ama o menos é mais. Qual o seu favorito? Comenta aqui! #minimalismo #lookbook #decoracao2026 #tapetes #homedecor',
+    media_type: 'CAROUSEL_ALBUM',
+    timestamp: '2026-03-08T11:00:00Z',
+    like_count: 743, comments_count: 52, shares: 109, saves: 378,
+    impressions: 15600, reach: 16600, video_views: 0,
+    thumb_color: 'linear-gradient(135deg,#0369a1,#0284c7)',
+    thumb_icon: 'view_carousel',
+  },
+  {
+    id: '10',
+    caption: 'Depoimento: como a Ana transformou seu apartamento 🥹 "Mal acreditei na diferença que um tapete fez". Histórias assim são o que nos motivam. Link na bio. #depoimento #cliente #decoracao #tapetes',
+    media_type: 'REEL',
+    timestamp: '2026-03-05T15:00:00Z',
+    like_count: 412, comments_count: 28, shares: 67, saves: 142,
+    impressions: 11800, reach: 12600, video_views: 5840,
+    thumb_color: 'linear-gradient(135deg,#dc2626,#b91c1c)',
+    thumb_icon: 'play_circle',
+  },
+  {
+    id: '11',
+    caption: 'Nova linha de tapetes artesanais já disponível 🧶 Feitos à mão, cada peça é única. Confira no site. #artesanal #tapetes #handmade #decoracaocasa',
+    media_type: 'IMAGE',
+    timestamp: '2026-03-03T17:00:00Z',
+    like_count: 156, comments_count: 7, shares: 11, saves: 18,
+    impressions: 8400, reach: 10000, video_views: 0,
+    thumb_color: 'linear-gradient(135deg,#d97706,#b45309)',
+    thumb_icon: 'image',
+  },
+  {
+    id: '12',
+    caption: 'Tendências de decoração 2026: o tapete como peça principal da sala! 🏠 Confira os estilos que vão dominar esse ano, desde o boho-chic ao contemporâneo. #tendencias2026 #decoracao #tapetes #interiordesign #homedesign',
+    media_type: 'REEL',
+    timestamp: '2026-03-01T10:00:00Z',
+    like_count: 589, comments_count: 41, shares: 88, saves: 214,
+    impressions: 13600, reach: 13700, video_views: 7120,
+    thumb_color: 'linear-gradient(135deg,#9333ea,#7c3aed)',
+    thumb_icon: 'play_circle',
+  },
+];
+
+// Compute engagement rate
+MOCK_POSTS.forEach(function(p) {
+  p.engagement_rate = ((p.like_count + p.comments_count + p.shares + p.saves) / p.reach * 100);
+});
+
+var DAILY_DATA = {
+  labels: ['1/3','3/3','5/3','8/3','10/3','12/3','15/3','18/3','20/3','22/3','25/3','28/3'],
+  reach:       [13700, 10000, 12600, 16600, 10600, 12100, 16800,  9200, 13900, 11800, 13800, 14200],
+  impressions: [13600,  8400, 11800, 15600, 10200, 12400, 17200,  9800, 16800, 11200, 14100, 18420],
+};
+
+var HOUR_ENG = {
+   0:1.1,  1:0.7,  2:0.4,  3:0.3,  4:0.5,  5:0.9,
+   6:2.1,  7:3.6,  8:4.4,  9:5.8, 10:8.9, 11:8.2,
+  12:6.3, 13:5.1, 14:5.7, 15:4.5, 16:4.2, 17:3.8,
+  18:4.7, 19:5.5, 20:6.1, 21:5.3, 22:3.6, 23:2.0,
+};
+
+var currentPosts = MOCK_POSTS.slice();
+var currentAITab = 'resumo';
+
+// ── HELPERS ────────────────────────────────────────────────────────────────
+
+function fmtNum(n) {
+  if (n >= 1000000) return (n/1000000).toFixed(1) + 'M';
+  if (n >= 1000)    return (n/1000).toFixed(1).replace(/\.0$/, '') + 'K';
+  return n.toString();
+}
+
+function perfLabel(er) {
+  if (er >= 6)  return { text: 'Destaque', cls: 'badge-high' };
+  if (er >= 3)  return { text: 'Normal',   cls: 'badge-mid'  };
+  return           { text: 'Abaixo',    cls: 'badge-low'  };
+}
+
+function typeLabel(t) {
+  if (t === 'REEL')           return { text: 'Reel',      cls: 'type-reel'     };
+  if (t === 'CAROUSEL_ALBUM') return { text: 'Carrossel', cls: 'type-carousel' };
+  return                             { text: 'Imagem',    cls: 'type-image'    };
+}
+
+function dateFmt(ts) {
+  var d = new Date(ts);
+  return d.getDate() + ' ' + ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'][d.getMonth()];
+}
+
+// ── SORT ───────────────────────────────────────────────────────────────────
+
+function sortPosts(by) {
+  var sorted = currentPosts.slice();
+  if (by === 'engagement')  sorted.sort(function(a,b){ return b.engagement_rate - a.engagement_rate; });
+  else if (by === 'reach')  sorted.sort(function(a,b){ return b.reach - a.reach; });
+  else if (by === 'date')   sorted.sort(function(a,b){ return new Date(b.timestamp) - new Date(a.timestamp); });
+  else if (by === 'impressions') sorted.sort(function(a,b){ return b.impressions - a.impressions; });
+  else if (by === 'saves')  sorted.sort(function(a,b){ return b.saves - a.saves; });
+  renderPosts(sorted);
+}
+
+// ── PERIOD ─────────────────────────────────────────────────────────────────
+
+function setPeriod(days) {
+  ['7','30','90'].forEach(function(d) {
+    var btn = document.getElementById('btn-' + d);
+    btn.classList.toggle('active',   d == days);
+    btn.classList.toggle('inactive', d != days);
+  });
+  var labels = { 7: '24 Mar 2026 – 30 Mar 2026', 30: '1 Mar 2026 – 30 Mar 2026', 90: '1 Jan 2026 – 30 Mar 2026' };
+  document.getElementById('period-label').textContent = labels[days];
+}
+
+// ── POSTS GRID ─────────────────────────────────────────────────────────────
+
+function renderPosts(posts) {
+  var maxReach = Math.max.apply(null, posts.map(function(p){ return p.reach; }));
+  var maxEng   = Math.max.apply(null, posts.map(function(p){ return p.engagement_rate; }));
+  var maxSaves = Math.max.apply(null, posts.map(function(p){ return p.saves; }));
+
+  var html = posts.map(function(post, i) {
+    var er   = post.engagement_rate.toFixed(1);
+    var perf = perfLabel(post.engagement_rate);
+    var type = typeLabel(post.media_type);
+    var caption = post.caption.length > 90 ? post.caption.substring(0,90) + '…' : post.caption;
+
+    var reachPct  = Math.round(post.reach / maxReach * 100);
+    var engPct    = Math.round(post.engagement_rate / maxEng * 100);
+    var savesPct  = Math.round(post.saves / maxSaves * 100);
+
+    return '<div class="post-card ghost-shadow fade-in" style="animation-delay:' + (i*40) + 'ms;" onclick="openPost(' + post.id + ')">' +
+      '<div style="height:100px;background:' + post.thumb_color + ';display:flex;align-items:center;justify-content:center;position:relative;">' +
+        '<span class="material-symbols-outlined text-white filled" style="font-size:36px;opacity:.7;">' + post.thumb_icon + '</span>' +
+        '<div style="position:absolute;top:8px;left:8px;">' +
+          '<span class="font-label text-[10px] font-700 px-2 py-0.5 rounded-full ' + type.cls + '">' + type.text + '</span>' +
+        '</div>' +
+        '<div style="position:absolute;top:8px;right:8px;">' +
+          '<span class="font-label text-[10px] font-700 px-2 py-0.5 rounded-full ' + perf.cls + '">' + perf.text + '</span>' +
+        '</div>' +
+        '<div style="position:absolute;bottom:8px;right:10px;">' +
+          '<span class="font-headline text-white text-[18px] font-800">' + er + '%</span>' +
+        '</div>' +
+      '</div>' +
+      '<div class="p-4">' +
+        '<p class="font-body text-[12px] text-on-surface-variant mb-3 leading-relaxed">' + caption + '</p>' +
+        '<div class="flex items-center justify-between mb-3">' +
+          '<span class="font-label text-[11px] text-on-surface-variant">' + dateFmt(post.timestamp) + '</span>' +
+          '<div class="flex items-center gap-3">' +
+            '<span class="flex items-center gap-1 font-label text-[11px] text-on-surface-variant"><span class="material-symbols-outlined text-[13px]">favorite</span>' + fmtNum(post.like_count) + '</span>' +
+            '<span class="flex items-center gap-1 font-label text-[11px] text-on-surface-variant"><span class="material-symbols-outlined text-[13px]">bookmark</span>' + fmtNum(post.saves) + '</span>' +
+            '<span class="flex items-center gap-1 font-label text-[11px] text-on-surface-variant"><span class="material-symbols-outlined text-[13px]">chat_bubble</span>' + post.comments_count + '</span>' +
+          '</div>' +
+        '</div>' +
+        '<div class="space-y-2">' +
+          '<div>' +
+            '<div class="flex justify-between mb-1"><span class="font-label text-[10px] text-on-surface-variant">Alcance</span><span class="font-label text-[10px] text-on-surface">' + fmtNum(post.reach) + '</span></div>' +
+            '<div class="metric-bar"><div class="metric-bar-fill" style="width:' + reachPct + '%;background:#6d28d9;"></div></div>' +
+          '</div>' +
+          '<div>' +
+            '<div class="flex justify-between mb-1"><span class="font-label text-[10px] text-on-surface-variant">Engajamento</span><span class="font-label text-[10px] font-700" style="color:' + (post.engagement_rate >= 6 ? '#16a34a' : post.engagement_rate >= 3 ? '#ca8a04' : '#dc2626') + '">' + er + '%</span></div>' +
+            '<div class="metric-bar"><div class="metric-bar-fill" style="width:' + engPct + '%;background:' + (post.engagement_rate >= 6 ? '#16a34a' : post.engagement_rate >= 3 ? '#ca8a04' : '#dc2626') + ';"></div></div>' +
+          '</div>' +
+          '<div>' +
+            '<div class="flex justify-between mb-1"><span class="font-label text-[10px] text-on-surface-variant">Saves</span><span class="font-label text-[10px] text-on-surface">' + fmtNum(post.saves) + '</span></div>' +
+            '<div class="metric-bar"><div class="metric-bar-fill" style="width:' + savesPct + '%;background:#a78bfa;"></div></div>' +
+          '</div>' +
+        '</div>' +
+      '</div>' +
+    '</div>';
+  }).join('');
+
+  document.getElementById('posts-grid').innerHTML = html;
+}
+
+// ── CHARTS ─────────────────────────────────────────────────────────────────
+
+function initCharts() {
+  // Line chart
+  var ctxLine = document.getElementById('chart-reach').getContext('2d');
+  new Chart(ctxLine, {
+    type: 'line',
+    data: {
+      labels: DAILY_DATA.labels,
+      datasets: [
+        {
+          label: 'Alcance',
+          data: DAILY_DATA.reach,
+          borderColor: '#6d28d9',
+          backgroundColor: 'rgba(109,40,217,.08)',
+          borderWidth: 2,
+          pointRadius: 4,
+          pointBackgroundColor: '#6d28d9',
+          tension: 0.35,
+          fill: true,
+        },
+        {
+          label: 'Impressões',
+          data: DAILY_DATA.impressions,
+          borderColor: '#a78bfa',
+          backgroundColor: 'rgba(167,139,250,.05)',
+          borderWidth: 2,
+          pointRadius: 4,
+          pointBackgroundColor: '#a78bfa',
+          tension: 0.35,
+          fill: true,
+        },
+      ],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: true,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: '#fff',
+          borderColor: '#edeeef',
+          borderWidth: 1,
+          titleColor: '#191c1d',
+          bodyColor: '#434653',
+          titleFont: { family: 'Manrope', weight: '700', size: 12 },
+          bodyFont: { family: 'Inter', size: 11 },
+          padding: 10,
+          callbacks: {
+            label: function(ctx) { return ' ' + ctx.dataset.label + ': ' + fmtNum(ctx.parsed.y); },
+          },
+        },
+      },
+      scales: {
+        x: {
+          grid: { color: '#f3f4f5' },
+          ticks: { font: { family: 'Inter', size: 10 }, color: '#737784' },
+        },
+        y: {
+          grid: { color: '#f3f4f5' },
+          ticks: { font: { family: 'Inter', size: 10 }, color: '#737784', callback: function(v){ return fmtNum(v); } },
+        },
+      },
+    },
+  });
+
+  // Doughnut chart
+  var ctxDonut = document.getElementById('chart-types').getContext('2d');
+  new Chart(ctxDonut, {
+    type: 'doughnut',
+    data: {
+      labels: ['Carrossel', 'Reels', 'Imagens'],
+      datasets: [{
+        data: [7.97, 6.37, 2.56],
+        backgroundColor: ['#6d28d9', '#7c3aed', '#c4b5fd'],
+        borderWidth: 0,
+        hoverOffset: 4,
+      }],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: true,
+      cutout: '68%',
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: '#fff',
+          borderColor: '#edeeef',
+          borderWidth: 1,
+          titleColor: '#191c1d',
+          bodyColor: '#434653',
+          callbacks: {
+            label: function(ctx) { return ' ' + ctx.label + ': ' + ctx.raw + '%'; },
+          },
+        },
+      },
+    },
+  });
+}
+
+// ── HEATMAP ────────────────────────────────────────────────────────────────
+
+function renderHeatmap() {
+  var hours = Object.keys(HOUR_ENG).map(Number);
+  var max   = Math.max.apply(null, Object.values(HOUR_ENG));
+
+  var COLORS = ['#f3f0ff','#ede9fe','#ddd6fe','#c4b5fd','#a78bfa','#7c3aed','#6d28d9','#5b21b6','#4c1d95','#3b0764'];
+
+  function getColor(val) {
+    var ratio = val / max;
+    var idx   = Math.min(Math.floor(ratio * COLORS.length), COLORS.length - 1);
+    return COLORS[idx];
+  }
+
+  function textColor(val) {
+    return val / max > 0.5 ? '#fff' : '#5b21b6';
+  }
+
+  var days = ['Seg','Ter','Qua','Qui','Sex','Sáb','Dom'];
+
+  // Build HTML
+  var html = '<div style="display:flex;gap:4px;align-items:flex-start;">';
+
+  // Y axis labels (days)
+  html += '<div style="display:flex;flex-direction:column;gap:4px;margin-right:4px;padding-top:28px;">';
+  days.forEach(function(d) {
+    html += '<div style="height:28px;display:flex;align-items:center;font-family:Inter,sans-serif;font-size:10px;color:#737784;width:28px;justify-content:flex-end;padding-right:4px;">' + d + '</div>';
+  });
+  html += '</div>';
+
+  // Grid
+  html += '<div style="overflow-x:auto;flex:1;">';
+  html += '<div style="display:flex;flex-direction:column;gap:4px;">';
+
+  // X axis labels (hours)
+  html += '<div style="display:flex;gap:4px;margin-bottom:4px;">';
+  hours.forEach(function(h) {
+    var label = h % 3 === 0 ? h + 'h' : '';
+    html += '<div class="heat-cell" style="font-family:Inter,sans-serif;font-size:10px;color:#737784;background:none;">' + label + '</div>';
+  });
+  html += '</div>';
+
+  // Each day row (using same hour data with slight variation per day for visual)
+  days.forEach(function(_, di) {
+    html += '<div style="display:flex;gap:4px;">';
+    hours.forEach(function(h) {
+      var variation = 0.7 + Math.sin(di * 7 + h * 3) * 0.3;
+      var val = HOUR_ENG[h] * variation;
+      var bg  = getColor(val);
+      var tc  = textColor(val);
+      var label = (h === 10 || h === 11 || h === 20) && di === 1 ? '★' : '';
+      html += '<div class="heat-cell" style="background:' + bg + ';color:' + tc + ';" title="' + h + 'h: ~' + val.toFixed(1) + '% eng.">' + label + '</div>';
+    });
+    html += '</div>';
+  });
+
+  html += '</div></div></div>';
+
+  // Best hour annotation
+  html += '<div class="flex items-center gap-2 mt-3"><div class="w-5 h-5 rounded flex items-center justify-center" style="background:#4c1d95;font-size:10px;color:#fff;">★</div><span class="font-body text-[12px] text-on-surface-variant">Melhor janela: <strong style="color:#191c1d;">10h–11h e 20h nos dias úteis</strong> — 65% mais engajamento que a média</span></div>';
+
+  document.getElementById('heatmap-container').innerHTML = html;
+}
+
+// ── AI INSIGHTS ────────────────────────────────────────────────────────────
+
+function getAIContent() {
+  var bestPost  = MOCK_POSTS.reduce(function(a,b){ return a.engagement_rate > b.engagement_rate ? a : b; });
+  var worstPost = MOCK_POSTS.reduce(function(a,b){ return a.engagement_rate < b.engagement_rate ? a : b; });
+  var bestType  = typeLabel(bestPost.media_type).text;
+
+  return {
+    resumo:
+      '<p class="font-label text-[11px] font-600 uppercase tracking-wider text-on-surface-variant mb-3">Destaques do período</p>' +
+      '<div class="ai-block-purple">' +
+        '<p class="font-label text-[12px] font-700 text-on-surface mb-1">🏆 Melhor post</p>' +
+        '<p class="font-body text-[12px] text-on-surface-variant leading-relaxed">' + bestPost.caption.substring(0,70) + '…</p>' +
+        '<div class="flex gap-3 mt-2">' +
+          '<span class="font-label text-[11px] font-700" style="color:#6d28d9;">' + bestPost.engagement_rate.toFixed(1) + '% eng.</span>' +
+          '<span class="font-label text-[11px] text-on-surface-variant">' + fmtNum(bestPost.saves) + ' saves</span>' +
+          '<span class="font-label text-[11px] text-on-surface-variant">' + fmtNum(bestPost.reach) + ' alcance</span>' +
+        '</div>' +
+      '</div>' +
+      '<div class="ai-block-yellow">' +
+        '<p class="font-label text-[12px] font-700 text-on-surface mb-1">⚠️ Post a melhorar</p>' +
+        '<p class="font-body text-[12px] text-on-surface-variant leading-relaxed">' + worstPost.caption.substring(0,70) + '…</p>' +
+        '<p class="font-body text-[11px] text-on-surface-variant mt-1">Engajamento: <strong>' + worstPost.engagement_rate.toFixed(1) + '%</strong> — abaixo da média de 4,8%</p>' +
+      '</div>' +
+      '<div class="ai-block-green">' +
+        '<p class="font-label text-[12px] font-700 text-on-surface mb-1">📈 Crescimento</p>' +
+        '<p class="font-body text-[12px] text-on-surface-variant leading-relaxed">Alcance cresceu <strong>+18%</strong> vs. período anterior. Carrosséis do tipo "Antes/Depois" respondem por 34% desse crescimento.</p>' +
+      '</div>' +
+      '<div class="ai-block-purple">' +
+        '<p class="font-label text-[12px] font-700 text-on-surface mb-1">🤖 Avaliação geral</p>' +
+        '<p class="font-body text-[12px] text-on-surface-variant leading-relaxed">Seu perfil está com engajamento <strong>2,3× acima da média do setor</strong> (4,8% vs 2,1%). Principal oportunidade: aumentar frequência de Carrosséis inspiracionais.</p>' +
+      '</div>',
+
+    padroes:
+      '<p class="font-label text-[11px] font-600 uppercase tracking-wider text-on-surface-variant mb-3">Padrões identificados</p>' +
+      '<div class="ai-block-purple">' +
+        '<p class="font-label text-[12px] font-700 text-on-surface mb-1">🕙 Horário</p>' +
+        '<p class="font-body text-[12px] text-on-surface-variant leading-relaxed">Posts publicados <strong>entre 10h–11h</strong> têm em média <strong>65% mais engajamento</strong> que posts à tarde (15h–18h). Os 4 melhores posts foram todos nessa janela.</p>' +
+      '</div>' +
+      '<div class="ai-block-green">' +
+        '<p class="font-label text-[12px] font-700 text-on-surface mb-1">📱 Formato vencedor</p>' +
+        '<p class="font-body text-[12px] text-on-surface-variant leading-relaxed"><strong>Carrosséis</strong> lideram com 7,97% de eng. médio, seguidos de Reels (6,37%). Imagens isoladas têm apenas 2,56% — 3,1× abaixo dos carrosséis.</p>' +
+      '</div>' +
+      '<div class="ai-block-purple">' +
+        '<p class="font-label text-[12px] font-700 text-on-surface mb-1">💾 Conteúdo mais salvo</p>' +
+        '<p class="font-body text-[12px] text-on-surface-variant leading-relaxed">Conteúdo do tipo <strong>"Antes e Depois"</strong> e <strong>"Como fazer"</strong> geram 3,2× mais saves que posts de produto puro. Saves são o principal sinal de conteúdo de alta qualidade para o algoritmo.</p>' +
+      '</div>' +
+      '<div class="ai-block-yellow">' +
+        '<p class="font-label text-[12px] font-700 text-on-surface mb-1">📝 Captions</p>' +
+        '<p class="font-body text-[12px] text-on-surface-variant leading-relaxed">Posts com <strong>150–300 caracteres</strong> e chamada para ação ("Salva!", "Comenta!") têm 2× mais engajamento que posts com captions curtos ou sem CTA.</p>' +
+      '</div>' +
+      '<div class="ai-block-green">' +
+        '<p class="font-label text-[12px] font-700 text-on-surface mb-1">#️⃣ Hashtags</p>' +
+        '<p class="font-body text-[12px] text-on-surface-variant leading-relaxed">Hashtags de nicho como <strong>#decoracao, #homedesign, #homedecor</strong> aparecem nos 5 posts de maior alcance. Evite hashtags genéricas como #sale que atraem baixo engajamento.</p>' +
+      '</div>',
+
+    sugestoes:
+      '<p class="font-label text-[11px] font-600 uppercase tracking-wider text-on-surface-variant mb-3">Recomendações</p>' +
+      '<div class="ai-block-green">' +
+        '<p class="font-label text-[12px] font-700 text-on-surface mb-1">✅ 1. Mais "Antes e Depois"</p>' +
+        '<p class="font-body text-[12px] text-on-surface-variant leading-relaxed">Crie pelo menos <strong>1 carrossel Antes/Depois por semana</strong>. É seu formato com maior eng. (9,06%) e mais saves (421). Peça para clientes enviarem fotos dos ambientes decorados.</p>' +
+      '</div>' +
+      '<div class="ai-block-green">' +
+        '<p class="font-label text-[12px] font-700 text-on-surface mb-1">✅ 2. Poste entre 10h–11h</p>' +
+        '<p class="font-body text-[12px] text-on-surface-variant leading-relaxed">Mova todos os seus posts para <strong>10h ou 11h nos dias úteis</strong>. Seus dados mostram que este horário gera 65% mais engajamento que qualquer outro período do dia.</p>' +
+      '</div>' +
+      '<div class="ai-block-green">' +
+        '<p class="font-label text-[12px] font-700 text-on-surface mb-1">✅ 3. Reels educativos</p>' +
+        '<p class="font-body text-[12px] text-on-surface-variant leading-relaxed">Crie mais Reels do tipo <strong>"Como escolher X para Y"</strong>. Seu Reel tutorial teve 8,39% de eng. vs 2,13% do Reel de bastidores. Tutoriais têm 4× mais compartilhamentos.</p>' +
+      '</div>' +
+      '<div class="ai-block-yellow">' +
+        '<p class="font-label text-[12px] font-700 text-on-surface mb-1">⚠️ 4. Menos posts promocionais isolados</p>' +
+        '<p class="font-body text-[12px] text-on-surface-variant leading-relaxed">Posts de <strong>promoção direta sem contexto</strong> têm eng. 40% abaixo da média (2,84%). Se for promover, embutir em carrossel de valor (ex: "5 looks + promoção no último slide").</p>' +
+      '</div>' +
+      '<div class="ai-block-purple">' +
+        '<p class="font-label text-[12px] font-700 text-on-surface mb-1">💡 5. UGC (Conteúdo de usuários)</p>' +
+        '<p class="font-body text-[12px] text-on-surface-variant leading-relaxed">O Reel de depoimento teve 5,15% de eng. Crie uma campanha pedindo que clientes postem com a hashtag da marca. Reposte o melhor UGC semanal — custo zero, alto engajamento.</p>' +
+      '</div>',
+
+    comp:
+      '<p class="font-label text-[11px] font-600 uppercase tracking-wider text-on-surface-variant mb-3">Mar 2026 vs Fev 2026</p>' +
+      '<div class="space-y-3 mb-4">' +
+        '<div class="flex items-center justify-between p-3 rounded-xl bg-surface-container-low">' +
+          '<span class="font-label text-[12px] text-on-surface">Alcance</span>' +
+          '<div class="flex items-center gap-2"><span class="font-headline text-[13px] font-700 text-on-surface">98,4K</span><span class="font-label text-[11px] flex items-center gap-0.5" style="color:#16a34a;"><span class="material-symbols-outlined text-[12px]">arrow_upward</span>+18%</span></div>' +
+        '</div>' +
+        '<div class="flex items-center justify-between p-3 rounded-xl bg-surface-container-low">' +
+          '<span class="font-label text-[12px] text-on-surface">Impressões</span>' +
+          '<div class="flex items-center gap-2"><span class="font-headline text-[13px] font-700 text-on-surface">142K</span><span class="font-label text-[11px] flex items-center gap-0.5" style="color:#16a34a;"><span class="material-symbols-outlined text-[12px]">arrow_upward</span>+12%</span></div>' +
+        '</div>' +
+        '<div class="flex items-center justify-between p-3 rounded-xl bg-surface-container-low">' +
+          '<span class="font-label text-[12px] text-on-surface">Eng. Médio</span>' +
+          '<div class="flex items-center gap-2"><span class="font-headline text-[13px] font-700 text-on-surface">4,8%</span><span class="font-label text-[11px] flex items-center gap-0.5" style="color:#16a34a;"><span class="material-symbols-outlined text-[12px]">arrow_upward</span>+0,6pp</span></div>' +
+        '</div>' +
+        '<div class="flex items-center justify-between p-3 rounded-xl bg-surface-container-low">' +
+          '<span class="font-label text-[12px] text-on-surface">Posts publicados</span>' +
+          '<div class="flex items-center gap-2"><span class="font-headline text-[13px] font-700 text-on-surface">12</span><span class="font-label text-[11px] flex items-center gap-0.5" style="color:#16a34a;"><span class="material-symbols-outlined text-[12px]">arrow_upward</span>+2</span></div>' +
+        '</div>' +
+        '<div class="flex items-center justify-between p-3 rounded-xl bg-surface-container-low">' +
+          '<span class="font-label text-[12px] text-on-surface">Novos seguidores</span>' +
+          '<div class="flex items-center gap-2"><span class="font-headline text-[13px] font-700 text-on-surface">+348</span><span class="font-label text-[11px] flex items-center gap-0.5" style="color:#16a34a;"><span class="material-symbols-outlined text-[12px]">arrow_upward</span>+22%</span></div>' +
+        '</div>' +
+      '</div>' +
+      '<div class="ai-block-purple">' +
+        '<p class="font-label text-[12px] font-700 text-on-surface mb-1">🤖 Interpretação</p>' +
+        '<p class="font-body text-[12px] text-on-surface-variant leading-relaxed">O aumento de <strong>3 carrosséis de inspiração</strong> em março (vs 1 em fevereiro) explica ~73% do crescimento de alcance. A mudança de horário de postagem para 10h também contribuiu com melhora mensurável no engajamento. Mantenha a estratégia.</p>' +
+      '</div>',
+  };
+}
+
+function renderAIContent(tab) {
+  var content = getAIContent();
+  document.getElementById('ai-panel-' + tab).innerHTML = content[tab];
+}
+
+function switchAITab(tab) {
+  currentAITab = tab;
+  document.querySelectorAll('.ai-tab').forEach(function(b) { b.classList.remove('active'); });
+  document.getElementById('aitab-' + tab).classList.add('active');
+  document.querySelectorAll('.ai-panel').forEach(function(p) { p.classList.add('hidden'); });
+  var panel = document.getElementById('ai-panel-' + tab);
+  panel.classList.remove('hidden');
+  if (!panel.innerHTML) renderAIContent(tab);
+}
+
+function regenerateAI() {
+  var btn = document.getElementById('ai-regen-btn');
+  btn.innerHTML = '<span class="material-symbols-outlined text-[13px] ai-loading">refresh</span><span class="ai-loading">Analisando…</span>';
+  btn.disabled = true;
+
+  setTimeout(function() {
+    document.querySelectorAll('.ai-panel').forEach(function(p) { p.innerHTML = ''; });
+    renderAIContent(currentAITab);
+    btn.disabled = false;
+    btn.innerHTML = '<span class="material-symbols-outlined text-[13px]">refresh</span>Atualizar';
+  }, 1800);
+}
+
+// ── POST DETAIL MODAL ──────────────────────────────────────────────────────
+
+function openPost(id) {
+  var post = MOCK_POSTS.find(function(p){ return p.id === id; });
+  if (!post) return;
+  var type = typeLabel(post.media_type);
+  var perf = perfLabel(post.engagement_rate);
+
+  document.getElementById('post-modal-content').innerHTML =
+    '<div style="height:120px;background:' + post.thumb_color + ';border-radius:0.75rem;display:flex;align-items:center;justify-content:center;margin-bottom:16px;">' +
+      '<span class="material-symbols-outlined text-white filled" style="font-size:48px;opacity:.7;">' + post.thumb_icon + '</span>' +
+    '</div>' +
+    '<div class="flex items-center gap-2 mb-3">' +
+      '<span class="font-label text-[11px] px-2 py-0.5 rounded-full ' + type.cls + '">' + type.text + '</span>' +
+      '<span class="font-label text-[11px] px-2 py-0.5 rounded-full ' + perf.cls + '">' + perf.text + ' (' + post.engagement_rate.toFixed(1) + '%)</span>' +
+      '<span class="font-label text-[11px] text-on-surface-variant ml-auto">' + dateFmt(post.timestamp) + '</span>' +
+    '</div>' +
+    '<p class="font-body text-[13px] text-on-surface-variant leading-relaxed mb-4">' + post.caption + '</p>' +
+    '<div class="grid grid-cols-3 gap-3 mb-4">' +
+      '<div class="p-3 rounded-xl bg-surface-container-low text-center">' +
+        '<p class="font-headline text-[18px] font-700 text-on-surface">' + fmtNum(post.like_count) + '</p>' +
+        '<p class="font-label text-[10px] uppercase tracking-wide text-on-surface-variant">Curtidas</p>' +
+      '</div>' +
+      '<div class="p-3 rounded-xl bg-surface-container-low text-center">' +
+        '<p class="font-headline text-[18px] font-700 text-on-surface">' + post.comments_count + '</p>' +
+        '<p class="font-label text-[10px] uppercase tracking-wide text-on-surface-variant">Comentários</p>' +
+      '</div>' +
+      '<div class="p-3 rounded-xl bg-surface-container-low text-center">' +
+        '<p class="font-headline text-[18px] font-700 text-on-surface">' + fmtNum(post.shares) + '</p>' +
+        '<p class="font-label text-[10px] uppercase tracking-wide text-on-surface-variant">Compartilh.</p>' +
+      '</div>' +
+      '<div class="p-3 rounded-xl bg-surface-container-low text-center">' +
+        '<p class="font-headline text-[18px] font-700 text-on-surface">' + fmtNum(post.saves) + '</p>' +
+        '<p class="font-label text-[10px] uppercase tracking-wide text-on-surface-variant">Saves</p>' +
+      '</div>' +
+      '<div class="p-3 rounded-xl bg-surface-container-low text-center">' +
+        '<p class="font-headline text-[18px] font-700 text-on-surface">' + fmtNum(post.reach) + '</p>' +
+        '<p class="font-label text-[10px] uppercase tracking-wide text-on-surface-variant">Alcance</p>' +
+      '</div>' +
+      '<div class="p-3 rounded-xl bg-surface-container-low text-center">' +
+        '<p class="font-headline text-[18px] font-700 text-on-surface">' + fmtNum(post.impressions) + '</p>' +
+        '<p class="font-label text-[10px] uppercase tracking-wide text-on-surface-variant">Impressões</p>' +
+      '</div>' +
+    '</div>';
+
+  document.getElementById('post-modal').classList.remove('hidden');
+}
+
+function closePostModal() {
+  document.getElementById('post-modal').classList.add('hidden');
+}
+
+// ── SETTINGS ───────────────────────────────────────────────────────────────
+
+function openSettings()  { document.getElementById('settings-modal').classList.remove('hidden'); }
+function closeSettings() { document.getElementById('settings-modal').classList.add('hidden'); }
+
+function saveSettings() {
+  var token = document.getElementById('inp-token').value.trim();
+  var accountId = document.getElementById('inp-account-id').value.trim();
+  if (!token || !accountId) { alert('Preencha o Account ID e o Access Token.'); return; }
+
+  var btn = document.querySelector('#settings-modal button[onclick="saveSettings()"]');
+  btn.textContent = 'Conectando…';
+  btn.disabled = true;
+
+  setTimeout(function() {
+    btn.textContent = 'Conectar & Sincronizar';
+    btn.disabled = false;
+    closeSettings();
+    document.getElementById('conn-badge').textContent = '● Conectado';
+    document.getElementById('conn-badge').style.cssText = 'background:#f0fdf4;color:#16a34a;';
+    var strip = document.getElementById('demo-strip');
+    if (strip) strip.remove();
+    alert('Conta conectada! Em produção, os dados reais seriam carregados aqui via Instagram Graph API.');
+  }, 1500);
+}
+
+// ── EXPORT ─────────────────────────────────────────────────────────────────
+
+function exportReport() {
+  alert('Em produção, esta função geraria um relatório PDF com todos os dados e análises do período selecionado.');
+}
+
+// ── INIT ───────────────────────────────────────────────────────────────────
+
+document.addEventListener('DOMContentLoaded', function() {
+  sortPosts('engagement');
+  initCharts();
+  renderHeatmap();
+  renderAIContent('resumo');
+});
+
+// Close modals on overlay click
+document.getElementById('settings-modal').addEventListener('click', function(e) {
+  if (e.target === this) closeSettings();
+});
+document.getElementById('post-modal').addEventListener('click', function(e) {
+  if (e.target === this) closePostModal();
+});
+</script>
+
+<!-- ── API Integration Layer ───────────────────────────────────────────── -->
+<script>
+'use strict';
+
+// ── Estado da conexão ────────────────────────────────────────────────────
+var API = {
+  token:       localStorage.getItem('nexus_ig_token')      || '',
+  accountId:   localStorage.getItem('nexus_ig_account_id') || '',
+  connected:   false,
+
+  save: function(token, accountId) {
+    this.token     = token;
+    this.accountId = accountId;
+    localStorage.setItem('nexus_ig_token',      token);
+    localStorage.setItem('nexus_ig_account_id', accountId);
+  },
+};
+
+// ── Carregar dados reais do Instagram ────────────────────────────────────
+async function loadInstagramData(period) {
+  if (!API.token || !API.accountId) return;
+
+  period = period || 30;
+  showGridLoading();
+
+  try {
+    var resp = await fetch('/.netlify/functions/instagram-data?period=' + period, {
+      headers: {
+        'X-Instagram-Token': API.token,
+        'X-Account-Id':      API.accountId,
+      },
+    });
+
+    var data = await resp.json();
+    if (!resp.ok || data.error) throw new Error(data.error || 'Erro na API');
+
+    // Atualiza conta
+    if (data.account) {
+      document.getElementById('acct-username').textContent = '@' + data.account.username;
+    }
+
+    // Substitui posts e renderiza
+    currentPosts = data.posts;
+    currentPosts.forEach(function(p) {
+      // Garante thumbnail_color para posts reais (usa cor baseada no tipo)
+      if (!p.thumb_color) {
+        var colors = {
+          REEL:           'linear-gradient(135deg,#6d28d9,#7c3aed)',
+          CAROUSEL_ALBUM: 'linear-gradient(135deg,#0ea5e9,#0284c7)',
+          IMAGE:          'linear-gradient(135deg,#0891b2,#0e7490)',
+        };
+        p.thumb_color = colors[p.media_type] || 'linear-gradient(135deg,#64748b,#475569)';
+        p.thumb_icon  = p.media_type === 'REEL' ? 'play_circle'
+                      : p.media_type === 'CAROUSEL_ALBUM' ? 'view_carousel' : 'image';
+      }
+      // Usa thumbnail real se disponível
+      if (p.thumbnail_url || p.media_url) {
+        p.real_thumb = p.thumbnail_url || p.media_url;
+      }
+    });
+
+    renderPosts(currentPosts);
+    updateKPIsFromAPI(data.summary);
+    API.connected = true;
+
+    // Limpa painéis de IA para regenerar com dados reais
+    document.querySelectorAll('.ai-panel').forEach(function(p) { p.innerHTML = ''; });
+    renderAIContent('resumo');
+
+  } catch (err) {
+    console.error('[loadInstagramData]', err);
+    showGridError('Erro ao carregar dados: ' + err.message + '. Usando dados demo.');
+  }
+}
+
+// ── Atualiza KPIs com dados da API ───────────────────────────────────────
+function updateKPIsFromAPI(summary) {
+  if (!summary) return;
+  // Substitui os valores dos 4 KPI cards com dados reais
+  var kpiValues = document.querySelectorAll('[data-kpi]');
+  kpiValues.forEach(function(el) {
+    var key = el.getAttribute('data-kpi');
+    if (key === 'reach')       el.textContent = fmtNum(summary.total_reach);
+    if (key === 'impressions') el.textContent = fmtNum(summary.total_impressions);
+    if (key === 'engagement')  el.textContent = summary.avg_engagement_rate.toFixed(1) + '%';
+  });
+}
+
+// ── Loading / Error states no grid ───────────────────────────────────────
+function showGridLoading() {
+  document.getElementById('posts-grid').innerHTML =
+    '<div class="col-span-2 flex flex-col items-center justify-center py-16 gap-3">' +
+      '<div class="w-8 h-8 rounded-full border-2 border-outline-variant border-t-marketing" style="animation:spin 1s linear infinite;"></div>' +
+      '<p class="font-body text-[13px] text-on-surface-variant">Carregando posts do Instagram…</p>' +
+    '</div>';
+}
+
+function showGridError(msg) {
+  document.getElementById('posts-grid').innerHTML =
+    '<div class="col-span-2">' +
+      '<div class="p-4 rounded-xl bg-surface-container-low">' +
+        '<p class="font-label text-[12px] font-600 text-error mb-1">⚠ Conexão com API</p>' +
+        '<p class="font-body text-[12px] text-on-surface-variant">' + msg + '</p>' +
+        '<button onclick="renderPosts(currentPosts)" class="mt-3 font-label text-[12px] font-600 px-3 py-1.5 rounded-full" style="background:#f3f0ff;color:#6d28d9;border:none;cursor:pointer;">Usar dados demo</button>' +
+      '</div>' +
+    '</div>';
+}
+
+// ── Regenerar IA com API real ────────────────────────────────────────────
+// Substitui a função regenerateAI() definida no script anterior
+var _origRegenerate = regenerateAI;
+
+regenerateAI = async function() {
+  var btn = document.getElementById('ai-regen-btn');
+  btn.innerHTML = '<span class="material-symbols-outlined text-[13px]" style="animation:spin 1s linear infinite;">refresh</span><span>Analisando…</span>';
+  btn.disabled = true;
+
+  // Se não tem API key configurada (ou não está conectado), usa lógica simulada
+  if (!API.connected) {
+    setTimeout(function() {
+      document.querySelectorAll('.ai-panel').forEach(function(p) { p.innerHTML = ''; });
+      renderAIContent(currentAITab);
+      btn.disabled = false;
+      btn.innerHTML = '<span class="material-symbols-outlined text-[13px]">refresh</span>Atualizar';
+    }, 1200);
+    return;
+  }
+
+  // Chamada real à Netlify Function
+  try {
+    var resp = await fetch('/.netlify/functions/ai-analyze', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        posts:   currentPosts,
+        account: { username: document.getElementById('acct-username').textContent.replace('@',''), followers_count: 12840 },
+        period:  30,
+      }),
+    });
+
+    var data = await resp.json();
+    if (!resp.ok || data.error) throw new Error(data.error || 'Erro na API');
+
+    renderAIFromAPI(data.analysis);
+
+  } catch (err) {
+    console.warn('[AI fallback]', err.message);
+    document.querySelectorAll('.ai-panel').forEach(function(p) { p.innerHTML = ''; });
+    renderAIContent(currentAITab);
+  }
+
+  btn.disabled = false;
+  btn.innerHTML = '<span class="material-symbols-outlined text-[13px]">refresh</span>Atualizar';
+};
+
+// ── Renderiza análise retornada pela API ─────────────────────────────────
+function renderAIFromAPI(a) {
+  // Tab: Resumo
+  document.getElementById('ai-panel-resumo').innerHTML =
+    '<p class="font-label text-[11px] font-600 uppercase tracking-wider text-on-surface-variant mb-3">Destaques do período</p>' +
+    (a.resumo ? [
+      '<div class="ai-block-purple"><p class="font-label text-[12px] font-700 text-on-surface mb-1">🏆 Melhor post</p><p class="font-body text-[12px] text-on-surface-variant leading-relaxed">' + a.resumo.melhor_post + '</p></div>',
+      '<div class="ai-block-yellow"><p class="font-label text-[12px] font-700 text-on-surface mb-1">⚠️ A melhorar</p><p class="font-body text-[12px] text-on-surface-variant leading-relaxed">' + a.resumo.pior_post + '</p></div>',
+      '<div class="ai-block-green"><p class="font-label text-[12px] font-700 text-on-surface mb-1">📈 Destaque</p><p class="font-body text-[12px] text-on-surface-variant leading-relaxed">' + a.resumo.destaque_periodo + '</p></div>',
+      '<div class="ai-block-purple"><p class="font-label text-[12px] font-700 text-on-surface mb-1">🤖 Avaliação</p><p class="font-body text-[12px] text-on-surface-variant leading-relaxed">' + a.resumo.avaliacao_geral + '</p></div>',
+    ].join('') : '<p class="font-body text-[12px] text-on-surface-variant">Sem dados</p>');
+
+  // Tab: Padrões
+  document.getElementById('ai-panel-padroes').innerHTML =
+    '<p class="font-label text-[11px] font-600 uppercase tracking-wider text-on-surface-variant mb-3">Padrões identificados</p>' +
+    (a.padroes || []).map(function(p) {
+      return '<div class="ai-block-purple mb-3">' +
+        '<div class="flex items-center gap-1.5 mb-1"><span class="material-symbols-outlined text-[14px]" style="color:#6d28d9;">' + (p.icone || 'insights') + '</span>' +
+        '<p class="font-label text-[12px] font-700 text-on-surface">' + p.titulo + '</p></div>' +
+        '<p class="font-body text-[12px] text-on-surface-variant leading-relaxed">' + p.descricao + '</p></div>';
+    }).join('');
+
+  // Tab: Sugestões
+  var priorColors = { alta: 'ai-block-green', media: 'ai-block-yellow', baixa: 'ai-block-purple' };
+  var priorLabels = { alta: '🔴 Alta', media: '🟡 Média', baixa: '🟢 Baixa' };
+  document.getElementById('ai-panel-sugestoes').innerHTML =
+    '<p class="font-label text-[11px] font-600 uppercase tracking-wider text-on-surface-variant mb-3">Recomendações prioritárias</p>' +
+    (a.sugestoes || []).map(function(s) {
+      var cls = priorColors[s.prioridade] || 'ai-block-purple';
+      return '<div class="' + cls + ' mb-3">' +
+        '<div class="flex items-center justify-between mb-1">' +
+          '<div class="flex items-center gap-1.5"><span class="material-symbols-outlined text-[14px]">' + (s.icone || 'lightbulb') + '</span>' +
+          '<p class="font-label text-[12px] font-700 text-on-surface">' + s.titulo + '</p></div>' +
+          '<span class="font-label text-[10px] text-on-surface-variant">' + (priorLabels[s.prioridade] || '') + '</span>' +
+        '</div>' +
+        '<p class="font-body text-[12px] text-on-surface-variant leading-relaxed">' + s.descricao + '</p></div>';
+    }).join('');
+
+  // Tab: Comparativo
+  document.getElementById('ai-panel-comp').innerHTML =
+    '<p class="font-label text-[11px] font-600 uppercase tracking-wider text-on-surface-variant mb-3">Interpretação do período</p>' +
+    (a.comparativo ? [
+      '<div class="ai-block-purple"><p class="font-label text-[12px] font-700 text-on-surface mb-1">📊 Análise geral</p><p class="font-body text-[12px] text-on-surface-variant leading-relaxed">' + a.comparativo.insight + '</p></div>',
+      '<div class="ai-block-green"><p class="font-label text-[12px] font-700 text-on-surface mb-1">🔑 Driver principal</p><p class="font-body text-[12px] text-on-surface-variant leading-relaxed">' + a.comparativo.driver_principal + '</p></div>',
+      '<div class="ai-block-yellow"><p class="font-label text-[12px] font-700 text-on-surface mb-1">⚡ Próximo passo</p><p class="font-body text-[12px] text-on-surface-variant leading-relaxed">' + a.comparativo.proximo_passo + '</p></div>',
+    ].join('') : '');
+
+  // Mostra o tab atual
+  document.querySelectorAll('.ai-panel').forEach(function(p) { p.classList.add('hidden'); });
+  document.getElementById('ai-panel-' + currentAITab).classList.remove('hidden');
+}
+
+// ── Override saveSettings para usar API ─────────────────────────────────
+saveSettings = function() {
+  var token     = document.getElementById('inp-token').value.trim();
+  var accountId = document.getElementById('inp-account-id').value.trim();
+
+  if (!token || !accountId) {
+    alert('Preencha o Account ID e o Access Token antes de continuar.');
+    return;
+  }
+
+  API.save(token, accountId);
+
+  var btn = document.querySelector('#settings-modal button[onclick="saveSettings()"]');
+  if (btn) { btn.textContent = 'Conectando…'; btn.disabled = true; }
+
+  closeSettings();
+
+  // Atualiza badge e remove banner demo
+  document.getElementById('conn-badge').textContent = '● Conectando…';
+  document.getElementById('conn-badge').style.cssText = 'background:#fef9c3;color:#854d0e;';
+
+  loadInstagramData(30).then(function() {
+    document.getElementById('conn-badge').textContent = '● Conectado';
+    document.getElementById('conn-badge').style.cssText = 'background:#f0fdf4;color:#16a34a;';
+    var strip = document.getElementById('demo-strip');
+    if (strip) strip.remove();
+    if (btn) { btn.textContent = 'Conectar & Sincronizar'; btn.disabled = false; }
+  }).catch(function() {
+    document.getElementById('conn-badge').textContent = '● Erro';
+    document.getElementById('conn-badge').style.cssText = 'background:#fef2f2;color:#991b1b;';
+    if (btn) { btn.textContent = 'Conectar & Sincronizar'; btn.disabled = false; }
+  });
+};
+
+// ── Auto-connect se já tem credenciais salvas ────────────────────────────
+if (API.token && API.accountId) {
+  document.addEventListener('DOMContentLoaded', function() {
+    document.getElementById('conn-badge').textContent = '● Reconectando…';
+    document.getElementById('conn-badge').style.cssText = 'background:#fef9c3;color:#854d0e;';
+    loadInstagramData(30);
+  });
+}
+
+// Animação de spin (usada no loading)
+var spinStyle = document.createElement('style');
+spinStyle.textContent = '@keyframes spin { from { transform:rotate(0deg); } to { transform:rotate(360deg); } }';
+document.head.appendChild(spinStyle);
+</script>
+
+<script>window.NEXUS_BASE = '../';</script>
+<script>window.NEXUS_PAGE = { module: 'marketing' };</script>
+<script src="../core/nexus-shell.js"></script>
+
+</body>
+</html>
