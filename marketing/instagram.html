@@ -176,7 +176,7 @@
 
   <!-- ── Account Card ──────────────────────────────────────── -->
   <div class="card ghost-shadow p-5 mb-6 flex flex-col sm:flex-row sm:items-center gap-4">
-    <div class="w-14 h-14 rounded-full ig-gradient flex items-center justify-center flex-shrink-0">
+    <div id="acct-photo" class="w-14 h-14 rounded-full ig-gradient flex items-center justify-center flex-shrink-0 overflow-hidden">
       <span class="material-symbols-outlined text-white text-[26px] filled">photo_camera</span>
     </div>
     <div class="flex-1 min-w-0">
@@ -185,19 +185,19 @@
         <span class="material-symbols-outlined text-[15px] filled" style="color:#0095f6;">verified</span>
         <span class="font-label text-[10px] font-600 px-2 py-0.5 rounded-full" style="background:#eff6ff;color:#1d4ed8;">Business</span>
       </div>
-      <p class="font-body text-[12px] text-on-surface-variant">Tapetes &amp; decoração de interiores • São Paulo, Brasil</p>
+      <p class="font-body text-[12px] text-on-surface-variant" id="acct-bio">Tapetes &amp; decoração de interiores • São Paulo, Brasil</p>
     </div>
     <div class="flex gap-5 sm:gap-8 flex-shrink-0">
       <div class="text-center">
-        <p class="font-headline text-[19px] font-700 text-on-surface">12.840</p>
+        <p class="font-headline text-[19px] font-700 text-on-surface" id="acct-followers">—</p>
         <p class="font-label text-[10px] uppercase tracking-wide text-on-surface-variant">Seguidores</p>
       </div>
       <div class="text-center">
-        <p class="font-headline text-[19px] font-700 text-on-surface">423</p>
+        <p class="font-headline text-[19px] font-700 text-on-surface" id="acct-following">—</p>
         <p class="font-label text-[10px] uppercase tracking-wide text-on-surface-variant">Seguindo</p>
       </div>
       <div class="text-center">
-        <p class="font-headline text-[19px] font-700 text-on-surface">187</p>
+        <p class="font-headline text-[19px] font-700 text-on-surface" id="acct-posts">—</p>
         <p class="font-label text-[10px] uppercase tracking-wide text-on-surface-variant">Posts</p>
       </div>
     </div>
@@ -218,40 +218,31 @@
     <div class="card ghost-shadow p-5">
       <p class="font-label text-[10px] uppercase tracking-widest text-on-surface-variant mb-2">Alcance Total</p>
       <div class="flex items-end gap-2">
-        <span class="font-headline text-[1.75rem] font-700 text-on-surface">98,4K</span>
-        <span class="font-label text-[11px] mb-1 flex items-center gap-0.5" style="color:#16a34a;">
-          <span class="material-symbols-outlined text-[12px]">arrow_upward</span>+18%
-        </span>
+        <span class="font-headline text-[1.75rem] font-700 text-on-surface" data-kpi="reach">—</span>
       </div>
-      <p class="font-body text-[11px] text-on-surface-variant mt-0.5">vs. período anterior</p>
+      <p class="font-body text-[11px] text-on-surface-variant mt-0.5" id="kpi-reach-sub">conectando…</p>
     </div>
     <div class="card ghost-shadow p-5">
       <p class="font-label text-[10px] uppercase tracking-widest text-on-surface-variant mb-2">Impressões</p>
       <div class="flex items-end gap-2">
-        <span class="font-headline text-[1.75rem] font-700 text-on-surface">142K</span>
-        <span class="font-label text-[11px] mb-1 flex items-center gap-0.5" style="color:#16a34a;">
-          <span class="material-symbols-outlined text-[12px]">arrow_upward</span>+12%
-        </span>
+        <span class="font-headline text-[1.75rem] font-700 text-on-surface" data-kpi="impressions">—</span>
       </div>
-      <p class="font-body text-[11px] text-on-surface-variant mt-0.5">vs. período anterior</p>
+      <p class="font-body text-[11px] text-on-surface-variant mt-0.5" id="kpi-imp-sub">conectando…</p>
     </div>
     <div class="card ghost-shadow p-5">
       <p class="font-label text-[10px] uppercase tracking-widest text-on-surface-variant mb-2">Eng. Médio</p>
       <div class="flex items-end gap-2">
-        <span class="font-headline text-[1.75rem] font-700 text-on-surface">4,8%</span>
-        <span class="font-label text-[11px] mb-1 flex items-center gap-0.5" style="color:#16a34a;">
-          <span class="material-symbols-outlined text-[12px]">arrow_upward</span>+0.6pp
-        </span>
+        <span class="font-headline text-[1.75rem] font-700 text-on-surface" data-kpi="engagement">—</span>
       </div>
       <p class="font-body text-[11px] text-on-surface-variant mt-0.5">setor médio: 2,1%</p>
     </div>
     <div class="card ghost-shadow p-5">
       <p class="font-label text-[10px] uppercase tracking-widest text-on-surface-variant mb-2">Melhor Formato</p>
       <div class="flex items-end gap-2">
-        <span class="font-headline text-[1.5rem] font-700 text-on-surface">Carrossel</span>
+        <span class="font-headline text-[1.5rem] font-700 text-on-surface" id="kpi-format-name">—</span>
         <span class="material-symbols-outlined text-[18px] mb-1 filled" style="color:#6d28d9;">auto_graph</span>
       </div>
-      <p class="font-body text-[11px] text-on-surface-variant mt-0.5">7,97% eng. médio</p>
+      <p class="font-body text-[11px] text-on-surface-variant mt-0.5" id="kpi-format-rate">calculando…</p>
     </div>
   </div>
 
@@ -671,9 +662,13 @@ function renderPosts(posts) {
     var engPct    = Math.round(post.engagement_rate / maxEng * 100);
     var savesPct  = Math.round(post.saves / maxSaves * 100);
 
+    var thumbStyle = post.real_thumb
+      ? 'height:100px;background-image:url(' + post.real_thumb + ');background-size:cover;background-position:center;position:relative;'
+      : 'height:100px;background:' + post.thumb_color + ';display:flex;align-items:center;justify-content:center;position:relative;';
+
     return '<div class="post-card ghost-shadow fade-in" style="animation-delay:' + (i*40) + 'ms;" onclick="openPost(' + post.id + ')">' +
-      '<div style="height:100px;background:' + post.thumb_color + ';display:flex;align-items:center;justify-content:center;position:relative;">' +
-        '<span class="material-symbols-outlined text-white filled" style="font-size:36px;opacity:.7;">' + post.thumb_icon + '</span>' +
+      '<div style="' + thumbStyle + '">' +
+        (post.real_thumb ? '' : '<span class="material-symbols-outlined text-white filled" style="font-size:36px;opacity:.7;">' + post.thumb_icon + '</span>') +
         '<div style="position:absolute;top:8px;left:8px;">' +
           '<span class="font-label text-[10px] font-700 px-2 py-0.5 rounded-full ' + type.cls + '">' + type.text + '</span>' +
         '</div>' +
@@ -717,10 +712,13 @@ function renderPosts(posts) {
 
 // ── CHARTS ─────────────────────────────────────────────────────────────────
 
+var lineChart = null;
+var donutChart = null;
+
 function initCharts() {
   // Line chart
   var ctxLine = document.getElementById('chart-reach').getContext('2d');
-  new Chart(ctxLine, {
+  lineChart = new Chart(ctxLine, {
     type: 'line',
     data: {
       labels: DAILY_DATA.labels,
@@ -784,7 +782,7 @@ function initCharts() {
 
   // Doughnut chart
   var ctxDonut = document.getElementById('chart-types').getContext('2d');
-  new Chart(ctxDonut, {
+  donutChart = new Chart(ctxDonut, {
     type: 'doughnut',
     data: {
       labels: ['Carrossel', 'Reels', 'Imagens'],
@@ -814,6 +812,72 @@ function initCharts() {
       },
     },
   });
+}
+
+// ── UPDATE CHARTS FROM REAL API DATA ──────────────────────────────────────
+
+function updateChartsFromAPI(posts) {
+  if (!posts || !posts.length) return;
+
+  // ─ Line chart: aggregate reach + impressions by post date ─
+  var byDate = {};
+  posts.slice().sort(function(a,b){ return new Date(a.timestamp) - new Date(b.timestamp); })
+    .forEach(function(p) {
+      var d = p.timestamp.substring(0, 10);
+      if (!byDate[d]) byDate[d] = { reach: 0, impressions: 0 };
+      byDate[d].reach       += (p.reach       || 0);
+      byDate[d].impressions += (p.impressions || 0);
+    });
+
+  var dateKeys   = Object.keys(byDate).sort();
+  var lineLabels = dateKeys.map(function(d) {
+    var dt = new Date(d + 'T12:00:00');
+    return dt.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' });
+  });
+  var reachArr  = dateKeys.map(function(d){ return byDate[d].reach; });
+  var impressArr = dateKeys.map(function(d){ return byDate[d].impressions; });
+
+  if (lineChart) {
+    lineChart.data.labels = lineLabels;
+    lineChart.data.datasets[0].data = reachArr;
+    lineChart.data.datasets[1].data = impressArr;
+    lineChart.update();
+  }
+
+  // ─ Donut chart: avg engagement rate by media type ─
+  var byType = {};
+  posts.forEach(function(p) {
+    var label = p.media_type === 'CAROUSEL_ALBUM' ? 'Carrossel'
+              : p.media_type === 'REEL'           ? 'Reels'
+              :                                     'Imagens';
+    if (!byType[label]) byType[label] = { sum: 0, count: 0 };
+    byType[label].sum   += (p.engagement_rate || 0);
+    byType[label].count += 1;
+  });
+
+  var typeLabels = Object.keys(byType);
+  var typeData   = typeLabels.map(function(t) {
+    return parseFloat((byType[t].sum / byType[t].count).toFixed(2));
+  });
+
+  if (donutChart) {
+    donutChart.data.labels           = typeLabels;
+    donutChart.data.datasets[0].data = typeData;
+    donutChart.update();
+  }
+
+  // ─ Best format KPI card ─
+  var bestType = typeLabels.reduce(function(a, b) {
+    return (byType[a].sum / byType[a].count) >= (byType[b].sum / byType[b].count) ? a : b;
+  }, typeLabels[0] || 'N/A');
+  var bestRate = bestType && byType[bestType]
+    ? (byType[bestType].sum / byType[bestType].count).toFixed(2)
+    : '0.00';
+
+  var fmtName = document.getElementById('kpi-format-name');
+  var fmtRate = document.getElementById('kpi-format-rate');
+  if (fmtName) fmtName.textContent = bestType;
+  if (fmtRate) fmtRate.textContent = bestRate + '% eng. médio';
 }
 
 // ── HEATMAP ────────────────────────────────────────────────────────────────
@@ -1021,15 +1085,18 @@ function regenerateAI() {
 // ── POST DETAIL MODAL ──────────────────────────────────────────────────────
 
 function openPost(id) {
-  var post = MOCK_POSTS.find(function(p){ return p.id === id; });
+  var post = currentPosts.find(function(p){ return p.id === id; });
+  if (!post) post = MOCK_POSTS.find(function(p){ return p.id === id; });
   if (!post) return;
   var type = typeLabel(post.media_type);
   var perf = perfLabel(post.engagement_rate);
 
+  var modalThumb = post.real_thumb
+    ? '<div style="height:160px;background-image:url(' + post.real_thumb + ');background-size:cover;background-position:center;border-radius:0.75rem;margin-bottom:16px;"></div>'
+    : '<div style="height:120px;background:' + post.thumb_color + ';border-radius:0.75rem;display:flex;align-items:center;justify-content:center;margin-bottom:16px;"><span class="material-symbols-outlined text-white filled" style="font-size:48px;opacity:.7;">' + post.thumb_icon + '</span></div>';
+
   document.getElementById('post-modal-content').innerHTML =
-    '<div style="height:120px;background:' + post.thumb_color + ';border-radius:0.75rem;display:flex;align-items:center;justify-content:center;margin-bottom:16px;">' +
-      '<span class="material-symbols-outlined text-white filled" style="font-size:48px;opacity:.7;">' + post.thumb_icon + '</span>' +
-    '</div>' +
+    modalThumb +
     '<div class="flex items-center gap-2 mb-3">' +
       '<span class="font-label text-[11px] px-2 py-0.5 rounded-full ' + type.cls + '">' + type.text + '</span>' +
       '<span class="font-label text-[11px] px-2 py-0.5 rounded-full ' + perf.cls + '">' + perf.text + ' (' + post.engagement_rate.toFixed(1) + '%)</span>' +
@@ -1158,7 +1225,34 @@ async function loadInstagramData(period) {
 
     // Atualiza conta
     if (data.account) {
-      document.getElementById('acct-username').textContent = '@' + data.account.username;
+      var acct = data.account;
+      document.getElementById('acct-username').textContent = '@' + acct.username;
+
+      // Bio: biography + website se disponíveis
+      var bio = acct.biography || '';
+      if (acct.website) bio += (bio ? ' • ' : '') + acct.website;
+      if (bio) document.getElementById('acct-bio').textContent = bio;
+
+      // Stats
+      if (acct.followers_count != null)
+        document.getElementById('acct-followers').textContent = fmtNum(acct.followers_count);
+      if (acct.follows_count != null)
+        document.getElementById('acct-following').textContent = fmtNum(acct.follows_count);
+      if (acct.media_count != null)
+        document.getElementById('acct-posts').textContent = fmtNum(acct.media_count);
+
+      // Profile picture — tenta carregar como <img>, fallback no gradient
+      if (acct.profile_picture_url) {
+        var photoEl = document.getElementById('acct-photo');
+        photoEl.innerHTML = '';
+        var img = document.createElement('img');
+        img.src = acct.profile_picture_url;
+        img.style.cssText = 'width:100%;height:100%;object-fit:cover;border-radius:50%;';
+        img.onerror = function() {
+          photoEl.innerHTML = '<span class="material-symbols-outlined text-white text-[26px] filled">photo_camera</span>';
+        };
+        photoEl.appendChild(img);
+      }
     }
 
     // Substitui posts e renderiza
@@ -1181,13 +1275,22 @@ async function loadInstagramData(period) {
       }
     });
 
+    // Atualiza contagem no header
+    var postCountEl = document.querySelector('h2 .font-body');
+    if (postCountEl) postCountEl.textContent = '(' + currentPosts.length + ')';
+
     renderPosts(currentPosts);
     updateKPIsFromAPI(data.summary);
+    updateChartsFromAPI(currentPosts);
     API.connected = true;
 
-    // Limpa painéis de IA para regenerar com dados reais
+    // Remove demo strip se ainda presente
+    var strip = document.getElementById('demo-strip');
+    if (strip) strip.remove();
+
+    // Dispara análise de IA com dados reais
     document.querySelectorAll('.ai-panel').forEach(function(p) { p.innerHTML = ''; });
-    renderAIContent('resumo');
+    regenerateAI();
 
   } catch (err) {
     console.error('[loadInstagramData]', err);
@@ -1198,7 +1301,6 @@ async function loadInstagramData(period) {
 // ── Atualiza KPIs com dados da API ───────────────────────────────────────
 function updateKPIsFromAPI(summary) {
   if (!summary) return;
-  // Substitui os valores dos 4 KPI cards com dados reais
   var kpiValues = document.querySelectorAll('[data-kpi]');
   kpiValues.forEach(function(el) {
     var key = el.getAttribute('data-kpi');
@@ -1206,6 +1308,11 @@ function updateKPIsFromAPI(summary) {
     if (key === 'impressions') el.textContent = fmtNum(summary.total_impressions);
     if (key === 'engagement')  el.textContent = summary.avg_engagement_rate.toFixed(1) + '%';
   });
+  // Sublabels
+  var reachSub = document.getElementById('kpi-reach-sub');
+  var impSub   = document.getElementById('kpi-imp-sub');
+  if (reachSub) reachSub.textContent = summary.post_count + ' posts • ' + summary.period_days + ' dias';
+  if (impSub)   impSub.textContent   = summary.post_count + ' posts • ' + summary.period_days + ' dias';
 }
 
 // ── Loading / Error states no grid ───────────────────────────────────────
@@ -1304,13 +1411,21 @@ function renderAIFromAPI(a) {
     '<p class="font-label text-[11px] font-600 uppercase tracking-wider text-on-surface-variant mb-3">Recomendações prioritárias</p>' +
     (a.sugestoes || []).map(function(s) {
       var cls = priorColors[s.prioridade] || 'ai-block-purple';
+      var roteiroHtml = s.roteiro
+        ? '<div class="mt-3 rounded-xl p-3" style="background:rgba(0,0,0,.04);">' +
+            '<p class="font-label text-[10px] font-700 uppercase tracking-wider text-on-surface-variant mb-1.5">📝 Roteiro sugerido</p>' +
+            '<p class="font-body text-[12px] text-on-surface leading-relaxed whitespace-pre-line">' + s.roteiro + '</p>' +
+          '</div>'
+        : '';
       return '<div class="' + cls + ' mb-3">' +
         '<div class="flex items-center justify-between mb-1">' +
           '<div class="flex items-center gap-1.5"><span class="material-symbols-outlined text-[14px]">' + (s.icone || 'lightbulb') + '</span>' +
           '<p class="font-label text-[12px] font-700 text-on-surface">' + s.titulo + '</p></div>' +
           '<span class="font-label text-[10px] text-on-surface-variant">' + (priorLabels[s.prioridade] || '') + '</span>' +
         '</div>' +
-        '<p class="font-body text-[12px] text-on-surface-variant leading-relaxed">' + s.descricao + '</p></div>';
+        '<p class="font-body text-[12px] text-on-surface-variant leading-relaxed">' + s.descricao + '</p>' +
+        roteiroHtml +
+      '</div>';
     }).join('');
 
   // Tab: Comparativo

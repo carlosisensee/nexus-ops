@@ -106,11 +106,36 @@ Responda SOMENTE com um JSON válido neste formato exato (sem markdown, sem text
     { "icone": "trending_up", "titulo": "Tendência do período", "descricao": "O que está crescendo ou diminuindo comparado ao esperado" }
   ],
   "sugestoes": [
-    { "prioridade": "alta", "icone": "star", "titulo": "Título ação 1", "descricao": "Recomendação específica e acionável com base nos dados, explicando o impacto esperado" },
-    { "prioridade": "alta", "icone": "schedule", "titulo": "Título ação 2", "descricao": "Recomendação de horário/frequência com base nos padrões identificados" },
-    { "prioridade": "media", "icone": "video_library", "titulo": "Título ação 3", "descricao": "Recomendação de formato/tipo de conteúdo" },
-    { "prioridade": "media", "icone": "warning", "titulo": "Título ação 4", "descricao": "O que evitar, com base nos posts de baixo desempenho" },
-    { "prioridade": "baixa", "icone": "lightbulb", "titulo": "Título ação 5", "descricao": "Ideia criativa ou oportunidade de longo prazo" }
+    {
+      "prioridade": "alta", "icone": "star",
+      "titulo": "Título ação 1",
+      "descricao": "Recomendação específica e acionável com base nos dados, explicando o impacto esperado",
+      "roteiro": "Escreva aqui um roteiro completo e pronto para uso do post sugerido. Inclua: 1) Ideia visual (ex: carrossel com 5 slides mostrando X), 2) Caption pronta (150-250 chars com CTA), 3) Hashtags sugeridas (#exemplo #decoracao). Seja específico para loja de tapetes/decoração."
+    },
+    {
+      "prioridade": "alta", "icone": "schedule",
+      "titulo": "Título ação 2",
+      "descricao": "Recomendação de horário/frequência com base nos padrões identificados",
+      "roteiro": "Roteiro de post para o horário ideal identificado: ideia visual, caption pronta com CTA e hashtags."
+    },
+    {
+      "prioridade": "media", "icone": "video_library",
+      "titulo": "Título ação 3",
+      "descricao": "Recomendação de formato/tipo de conteúdo",
+      "roteiro": "Roteiro detalhado para o formato recomendado: estrutura do conteúdo, texto da caption, hashtags e sugestão de CTA."
+    },
+    {
+      "prioridade": "media", "icone": "warning",
+      "titulo": "Título ação 4",
+      "descricao": "O que evitar, com base nos posts de baixo desempenho",
+      "roteiro": "Exemplo de como reescrever/reformatar um post fraco: versão melhorada com caption corrigida e abordagem visual diferente."
+    },
+    {
+      "prioridade": "baixa", "icone": "lightbulb",
+      "titulo": "Título ação 5",
+      "descricao": "Ideia criativa ou oportunidade de longo prazo",
+      "roteiro": "Roteiro completo para este conteúdo criativo: conceito visual, caption pronta para copiar, hashtags de nicho."
+    }
   ],
   "comparativo": {
     "insight": "Interpretação qualitativa da evolução — o que melhorou, o que piorou e por quê",
@@ -129,7 +154,7 @@ Responda SOMENTE com um JSON válido neste formato exato (sem markdown, sem text
       },
       body: JSON.stringify({
         model:      'claude-haiku-4-5-20251001',
-        max_tokens: 2500,
+        max_tokens: 3500,
         messages:   [{ role: 'user', content: prompt }],
       }),
     });
