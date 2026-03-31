@@ -44,7 +44,7 @@ exports.handler = async function (event) {
   try {
     // ── 1. Conta ──────────────────────────────────────────────
     const accountResp = await fetch(
-      `${BASE}/${accountId}?fields=id,username,account_type,media_count,followers_count,follows_count,profile_picture_url&access_token=${token}`
+      `${BASE}/${accountId}?fields=id,username,name,biography,media_count,followers_count,follows_count,profile_picture_url,website&access_token=${token}`
     );
     const account = await accountResp.json();
     if (account.error) throw new Error(`Instagram API: ${account.error.message}`);
