@@ -1139,7 +1139,14 @@ function closePostModal() {
 
 // ── SETTINGS ───────────────────────────────────────────────────────────────
 
-function openSettings()  { document.getElementById('settings-modal').classList.remove('hidden'); }
+function openSettings() {
+  // Preenche os campos com credenciais já salvas
+  var tokenInput   = document.getElementById('inp-token');
+  var accountInput = document.getElementById('inp-account-id');
+  if (API.token     && !tokenInput.value)   tokenInput.value   = API.token;
+  if (API.accountId && !accountInput.value) accountInput.value = API.accountId;
+  document.getElementById('settings-modal').classList.remove('hidden');
+}
 function closeSettings() { document.getElementById('settings-modal').classList.add('hidden'); }
 
 function saveSettings() {
@@ -1284,6 +1291,10 @@ async function loadInstagramData(period) {
     updateChartsFromAPI(currentPosts);
     API.connected = true;
 
+    // Atualiza badge de conexão
+    var badge = document.getElementById('conn-badge');
+    if (badge) { badge.textContent = '● Conectado'; badge.style.cssText = 'background:#f0fdf4;color:#16a34a;'; }
+
     // Remove demo strip se ainda presente
     var strip = document.getElementById('demo-strip');
     if (strip) strip.remove();
@@ -1294,6 +1305,8 @@ async function loadInstagramData(period) {
 
   } catch (err) {
     console.error('[loadInstagramData]', err);
+    var badge = document.getElementById('conn-badge');
+    if (badge) { badge.textContent = '● Erro na API'; badge.style.cssText = 'background:#fef2f2;color:#991b1b;'; }
     showGridError('Erro ao carregar dados: ' + err.message + '. Usando dados demo.');
   }
 }
