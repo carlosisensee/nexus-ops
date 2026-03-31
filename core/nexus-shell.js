@@ -183,7 +183,7 @@
       // Nav list
       '#nexus-nav-list{',
         'flex:1;display:flex;flex-direction:column;align-items:center;',
-        'gap:2px;width:100%;padding:0 8px;overflow-y:auto;overflow-x:visible;',
+        'gap:2px;width:100%;padding:0 8px;overflow:visible;',
       '}',
 
       // Nav items
