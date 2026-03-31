@@ -160,18 +160,12 @@
     </div>
   </div>
 
-  <!-- ── Demo Strip ─────────────────────────────────────────── -->
+  <!-- ── Loading Strip (removido automaticamente após conexão) ──────────── -->
   <div id="demo-strip" class="demo-strip">
-    <span class="material-symbols-outlined text-[17px]" style="color:#7c3aed;flex-shrink:0;">info</span>
+    <span class="material-symbols-outlined text-[17px]" style="color:#7c3aed;flex-shrink:0;animation:spin 1.2s linear infinite;">refresh</span>
     <p class="font-body text-[13px] text-on-surface-variant flex-1">
-      Dados simulados de uma conta de tapetes/decoração.
-      <button onclick="openSettings()" style="color:#6d28d9;background:none;border:none;cursor:pointer;font-family:'Inter',sans-serif;font-size:13px;font-weight:600;text-decoration:underline;padding:0;">
-        Conecte sua conta real →
-      </button>
+      Conectando à API do Instagram…
     </p>
-    <button onclick="document.getElementById('demo-strip').remove()" style="background:none;border:none;cursor:pointer;color:#9ca3af;flex-shrink:0;">
-      <span class="material-symbols-outlined text-[16px]">close</span>
-    </button>
   </div>
 
   <!-- ── Account Card ──────────────────────────────────────── -->
@@ -386,10 +380,10 @@
     <div class="flex items-center justify-between mb-6">
       <div class="flex items-center gap-3">
         <div class="w-11 h-11 rounded-xl ig-gradient flex items-center justify-center flex-shrink-0">
-          <span class="material-symbols-outlined text-white text-[20px] filled">photo_camera</span>
+          <span class="material-symbols-outlined text-white text-[20px] filled">settings</span>
         </div>
         <div>
-          <h3 class="font-headline text-[17px] font-700 text-on-surface">Conectar Instagram</h3>
+          <h3 class="font-headline text-[17px] font-700 text-on-surface">Configurações de Conexão</h3>
           <p class="font-body text-[12px] text-on-surface-variant">Instagram Graph API v20</p>
         </div>
       </div>
@@ -399,21 +393,32 @@
     </div>
 
     <div class="space-y-4">
-      <div>
-        <label class="field-label">Instagram Business Account ID</label>
-        <input id="inp-account-id" type="text" placeholder="17841400000000000" class="field-input" />
-        <p class="font-body text-[11px] text-on-surface-variant mt-1.5">Meta Business Suite → Configurações → ID da conta Instagram</p>
+
+      <!-- Status atual -->
+      <div class="p-4 rounded-xl flex items-center gap-3" style="background:#f0fdf4;border:1px solid #bbf7d0;">
+        <span class="material-symbols-outlined text-[22px]" style="color:#16a34a;">shield_lock</span>
+        <div>
+          <p class="font-label text-[12px] font-700" style="color:#15803d;">Credenciais protegidas no servidor</p>
+          <p class="font-body text-[11px]" style="color:#166534;">O token e o Account ID nunca são expostos ao navegador — ficam exclusivamente nas variáveis de ambiente do Netlify.</p>
+        </div>
       </div>
 
-      <div>
-        <label class="field-label">Access Token (Long-lived)</label>
-        <input id="inp-token" type="password" placeholder="EAAxxxxxxx..." class="field-input" />
-        <p class="font-body text-[11px] text-on-surface-variant mt-1">Token válido por 60 dias. <a href="https://developers.facebook.com/tools/explorer" target="_blank" style="color:#6d28d9;text-decoration:underline;">Gerar no Graph API Explorer →</a></p>
+      <!-- Conta conectada -->
+      <div class="p-4 rounded-xl" style="background:#f8f9fa;border:1px solid #e2e4e9;">
+        <p class="font-label text-[10px] uppercase tracking-wider text-on-surface-variant mb-2">Conta conectada</p>
+        <p class="font-headline text-[15px] font-700 text-on-surface" id="settings-username">—</p>
+        <p class="font-body text-[11px] text-on-surface-variant mt-0.5" id="settings-status">Verificando conexão…</p>
       </div>
 
+      <!-- Como atualizar credenciais -->
       <div class="p-4 rounded-xl" style="background:#fdf4ff;border:1px solid #e9d5ff;">
-        <p class="font-label text-[12px] font-700 mb-1" style="color:#6d28d9;">Permissões necessárias no Meta App</p>
-        <div class="flex flex-wrap gap-1.5">
+        <p class="font-label text-[12px] font-700 mb-2" style="color:#6d28d9;">Como atualizar o token ou a conta</p>
+        <ol class="space-y-1.5">
+          <li class="font-body text-[11px] text-on-surface-variant flex gap-2"><span class="font-700 text-on-surface" style="min-width:14px;">1.</span>Acesse <strong>Netlify Dashboard → Site → Environment Variables</strong></li>
+          <li class="font-body text-[11px] text-on-surface-variant flex gap-2"><span class="font-700 text-on-surface" style="min-width:14px;">2.</span>Atualize <code style="background:#ede9fe;color:#5b21b6;padding:1px 4px;border-radius:4px;font-size:10px;">IG_ACCESS_TOKEN</code> e/ou <code style="background:#ede9fe;color:#5b21b6;padding:1px 4px;border-radius:4px;font-size:10px;">IG_ACCOUNT_ID</code></li>
+          <li class="font-body text-[11px] text-on-surface-variant flex gap-2"><span class="font-700 text-on-surface" style="min-width:14px;">3.</span>Faça um novo deploy (ou clique em <strong>Trigger deploy</strong>)</li>
+        </ol>
+        <div class="flex flex-wrap gap-1.5 mt-3">
           <span class="font-label text-[10px] px-2 py-0.5 rounded" style="background:#ede9fe;color:#5b21b6;">instagram_basic</span>
           <span class="font-label text-[10px] px-2 py-0.5 rounded" style="background:#ede9fe;color:#5b21b6;">instagram_manage_insights</span>
           <span class="font-label text-[10px] px-2 py-0.5 rounded" style="background:#ede9fe;color:#5b21b6;">pages_show_list</span>
@@ -422,11 +427,12 @@
       </div>
 
       <div class="flex gap-3 pt-1">
-        <button onclick="closeSettings()" class="flex-1 py-3 rounded-xl font-label text-[13px] font-600 transition-all" style="border:1.5px solid #c3c6d5;background:none;cursor:pointer;color:#434653;">
-          Cancelar
+        <button onclick="closeSettings()" class="flex-1 py-3 rounded-xl font-label text-[13px] font-600 text-white" style="background:linear-gradient(135deg,#6d28d9,#7c3aed);border:none;cursor:pointer;">
+          Fechar
         </button>
-        <button onclick="saveSettings()" class="flex-1 py-3 rounded-xl font-label text-[13px] font-600 text-white" style="background:linear-gradient(135deg,#6d28d9,#7c3aed);border:none;cursor:pointer;">
-          Conectar &amp; Sincronizar
+        <button onclick="closeSettings();loadInstagramData(30);" class="flex-1 py-3 rounded-xl font-label text-[13px] font-600 transition-all" style="border:1.5px solid #6d28d9;background:none;cursor:pointer;color:#6d28d9;">
+          <span class="material-symbols-outlined text-[14px]" style="vertical-align:middle;">refresh</span>
+          Recarregar dados
         </button>
       </div>
     </div>
@@ -1140,35 +1146,27 @@ function closePostModal() {
 // ── SETTINGS ───────────────────────────────────────────────────────────────
 
 function openSettings() {
-  // Preenche os campos com credenciais já salvas
-  var tokenInput   = document.getElementById('inp-token');
-  var accountInput = document.getElementById('inp-account-id');
-  if (API.token     && !tokenInput.value)   tokenInput.value   = API.token;
-  if (API.accountId && !accountInput.value) accountInput.value = API.accountId;
+  // Atualiza status no modal com dados reais da conexão atual
+  var usernameEl = document.getElementById('settings-username');
+  var statusEl   = document.getElementById('settings-status');
+  if (usernameEl) {
+    usernameEl.textContent = API.accountUsername ? '@' + API.accountUsername : '—';
+  }
+  if (statusEl) {
+    if (API.connected) {
+      statusEl.textContent = '● Conectado — dados carregados com sucesso';
+      statusEl.style.color = '#16a34a';
+    } else {
+      statusEl.textContent = '● Não conectado — verifique as variáveis de ambiente no Netlify';
+      statusEl.style.color = '#991b1b';
+    }
+  }
   document.getElementById('settings-modal').classList.remove('hidden');
 }
 function closeSettings() { document.getElementById('settings-modal').classList.add('hidden'); }
 
-function saveSettings() {
-  var token = document.getElementById('inp-token').value.trim();
-  var accountId = document.getElementById('inp-account-id').value.trim();
-  if (!token || !accountId) { alert('Preencha o Account ID e o Access Token.'); return; }
-
-  var btn = document.querySelector('#settings-modal button[onclick="saveSettings()"]');
-  btn.textContent = 'Conectando…';
-  btn.disabled = true;
-
-  setTimeout(function() {
-    btn.textContent = 'Conectar & Sincronizar';
-    btn.disabled = false;
-    closeSettings();
-    document.getElementById('conn-badge').textContent = '● Conectado';
-    document.getElementById('conn-badge').style.cssText = 'background:#f0fdf4;color:#16a34a;';
-    var strip = document.getElementById('demo-strip');
-    if (strip) strip.remove();
-    alert('Conta conectada! Em produção, os dados reais seriam carregados aqui via Instagram Graph API.');
-  }, 1500);
-}
+// saveSettings() não é mais necessário — credenciais gerenciadas via Netlify env vars
+function saveSettings() { closeSettings(); }
 
 // ── EXPORT ─────────────────────────────────────────────────────────────────
 
@@ -1199,33 +1197,23 @@ document.getElementById('post-modal').addEventListener('click', function(e) {
 'use strict';
 
 // ── Estado da conexão ────────────────────────────────────────────────────
+// Credenciais NUNCA ficam no frontend — exclusivamente em variáveis de
+// ambiente no Netlify (IG_ACCESS_TOKEN e IG_ACCOUNT_ID).
+// O objeto API mantém apenas estado de conexão e dados da conta em memória.
 var API = {
-  token:       localStorage.getItem('nexus_ig_token')      || '',
-  accountId:   localStorage.getItem('nexus_ig_account_id') || '',
-  connected:   false,
-
-  save: function(token, accountId) {
-    this.token     = token;
-    this.accountId = accountId;
-    localStorage.setItem('nexus_ig_token',      token);
-    localStorage.setItem('nexus_ig_account_id', accountId);
-  },
+  connected:      false,
+  accountUsername: '',
+  followersCount:  0,
 };
 
 // ── Carregar dados reais do Instagram ────────────────────────────────────
 async function loadInstagramData(period) {
-  if (!API.token || !API.accountId) return;
-
   period = period || 30;
   showGridLoading();
 
   try {
-    var resp = await fetch('/.netlify/functions/instagram-data?period=' + period, {
-      headers: {
-        'X-Instagram-Token': API.token,
-        'X-Account-Id':      API.accountId,
-      },
-    });
+    // Sem headers de credenciais — a Netlify Function lê das env vars (server-side)
+    var resp = await fetch('/.netlify/functions/instagram-data?period=' + period);
 
     var data = await resp.json();
     if (!resp.ok || data.error) throw new Error(data.error || 'Erro na API');
@@ -1289,7 +1277,9 @@ async function loadInstagramData(period) {
     renderPosts(currentPosts);
     updateKPIsFromAPI(data.summary);
     updateChartsFromAPI(currentPosts);
-    API.connected = true;
+    API.connected       = true;
+    API.accountUsername = (data.account && data.account.username) ? data.account.username : '';
+    API.followersCount  = (data.account && data.account.followers_count) ? data.account.followers_count : 0;
 
     // Atualiza badge de conexão
     var badge = document.getElementById('conn-badge');
@@ -1375,7 +1365,7 @@ regenerateAI = async function() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         posts:   currentPosts,
-        account: { username: document.getElementById('acct-username').textContent.replace('@',''), followers_count: 12840 },
+        account: { username: API.accountUsername || document.getElementById('acct-username').textContent.replace('@',''), followers_count: API.followersCount },
         period:  30,
       }),
     });
@@ -1455,48 +1445,13 @@ function renderAIFromAPI(a) {
   document.getElementById('ai-panel-' + currentAITab).classList.remove('hidden');
 }
 
-// ── Override saveSettings para usar API ─────────────────────────────────
-saveSettings = function() {
-  var token     = document.getElementById('inp-token').value.trim();
-  var accountId = document.getElementById('inp-account-id').value.trim();
-
-  if (!token || !accountId) {
-    alert('Preencha o Account ID e o Access Token antes de continuar.');
-    return;
-  }
-
-  API.save(token, accountId);
-
-  var btn = document.querySelector('#settings-modal button[onclick="saveSettings()"]');
-  if (btn) { btn.textContent = 'Conectando…'; btn.disabled = true; }
-
-  closeSettings();
-
-  // Atualiza badge e remove banner demo
+// ── Auto-connect ao carregar a página ────────────────────────────────────
+// Credenciais são lidas pelo servidor (env vars) — o frontend só dispara o fetch.
+document.addEventListener('DOMContentLoaded', function() {
   document.getElementById('conn-badge').textContent = '● Conectando…';
   document.getElementById('conn-badge').style.cssText = 'background:#fef9c3;color:#854d0e;';
-
-  loadInstagramData(30).then(function() {
-    document.getElementById('conn-badge').textContent = '● Conectado';
-    document.getElementById('conn-badge').style.cssText = 'background:#f0fdf4;color:#16a34a;';
-    var strip = document.getElementById('demo-strip');
-    if (strip) strip.remove();
-    if (btn) { btn.textContent = 'Conectar & Sincronizar'; btn.disabled = false; }
-  }).catch(function() {
-    document.getElementById('conn-badge').textContent = '● Erro';
-    document.getElementById('conn-badge').style.cssText = 'background:#fef2f2;color:#991b1b;';
-    if (btn) { btn.textContent = 'Conectar & Sincronizar'; btn.disabled = false; }
-  });
-};
-
-// ── Auto-connect se já tem credenciais salvas ────────────────────────────
-if (API.token && API.accountId) {
-  document.addEventListener('DOMContentLoaded', function() {
-    document.getElementById('conn-badge').textContent = '● Reconectando…';
-    document.getElementById('conn-badge').style.cssText = 'background:#fef9c3;color:#854d0e;';
-    loadInstagramData(30);
-  });
-}
+  loadInstagramData(30);
+});
 
 // Animação de spin (usada no loading)
 var spinStyle = document.createElement('style');

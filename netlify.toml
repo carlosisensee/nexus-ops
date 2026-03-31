@@ -5,19 +5,44 @@
 [functions]
   node_bundler = "esbuild"
 
-# Variáveis de ambiente necessárias (configure no Netlify Dashboard → Site Settings → Environment Variables):
+# ── Variáveis de ambiente obrigatórias (Netlify Dashboard → Site Settings → Environment Variables) ──
 #
-#   ANTHROPIC_API_KEY    → sua chave da API Anthropic (claude-haiku-4-5-20251001)
-#   IG_ACCESS_TOKEN      → token long-lived do Instagram Graph API (opcional — pode passar pelo frontend)
-#   IG_ACCOUNT_ID        → ID da conta Business do Instagram (opcional — pode passar pelo frontend)
-#
-# As functions aceitam os valores via headers (X-Instagram-Token, X-Account-Id)
-# quando as env vars não estiverem definidas, permitindo que o usuário configure
-# diretamente no painel do Nexus Ops.
+#   ANTHROPIC_API_KEY       → Chave da Anthropic (Claude Haiku)
+#   IG_ACCESS_TOKEN         → Token long-lived do Instagram Graph API (NUNCA expor no frontend)
+#   IG_ACCOUNT_ID           → ID da conta Business do Instagram (NUNCA expor no frontend)
+#   NEXUS_ALLOWED_ORIGIN    → URL completa do site em produção (ex: https://nexus-ops.netlify.app)
+#                             Usada para validar Origin nas Netlify Functions.
+#                             Para dev local, deixar vazio — a validação é ignorada automaticamente.
 
+# ── Security Headers (OWASP A05 — Security Misconfiguration) ────────────────
+# Aplicado a TODAS as rotas, não só HTML
 [[headers]]
-  for = "/*.html"
+  for = "/*"
   [headers.values]
-    X-Frame-Options = "SAMEORIGIN"
+    # Impede clickjacking (carregamento em iframe de outros domínios)
+    X-Frame-Options = "DENY"
+
+    # Impede MIME sniffing — browser respeita o Content-Type declarado
     X-Content-Type-Options = "nosniff"
+
+    # Só envia Referer para mesma origem; nunca vaza URL para terceiros
     Referrer-Policy = "strict-origin-when-cross-origin"
+
+    # Força HTTPS por 1 ano, incluindo subdomínios
+    Strict-Transport-Security = "max-age=31536000; includeSubDomains; preload"
+
+    # Desabilita APIs de hardware sensíveis
+    Permissions-Policy = "camera=(), microphone=(), geolocation=(), payment=(), usb=()"
+
+    # CSP: define exatamente quais origens podem carregar cada tipo de recurso
+    # - default-src 'self': tudo de mesma origem por padrão
+    # - script-src: permite inline scripts (necessário para a app) + CDNs usados
+    # - style-src: inline styles + Google Fonts + CDNs
+    # - img-src: permite data URIs, HTTPS (thumbnails Instagram), blob
+    # - connect-src: permite chamadas fetch apenas para Anthropic e Facebook APIs via functions (same-origin)
+    # - font-src: Google Fonts
+    # - frame-ancestors: substitui X-Frame-Options para browsers modernos
+    Content-Security-Policy = "default-src 'self'; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdnjs.cloudflare.com; font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com; img-src 'self' data: blob: https:; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self';"
+
+    # Remove header que revela tecnologia usada
+    X-Powered-By = ""
