@@ -5,44 +5,38 @@
 [functions]
   node_bundler = "esbuild"
 
-# ── Variáveis de ambiente obrigatórias (Netlify Dashboard → Site Settings → Environment Variables) ──
+# ── Variáveis de ambiente (Netlify Dashboard → Site Settings → Environment Variables) ──
 #
 #   ANTHROPIC_API_KEY       → Chave da Anthropic (Claude Haiku)
-#   IG_ACCESS_TOKEN         → Token long-lived do Instagram Graph API (NUNCA expor no frontend)
-#   IG_ACCOUNT_ID           → ID da conta Business do Instagram (NUNCA expor no frontend)
-#   NEXUS_ALLOWED_ORIGIN    → URL completa do site em produção (ex: https://nexus-ops.netlify.app)
-#                             Usada para validar Origin nas Netlify Functions.
-#                             Para dev local, deixar vazio — a validação é ignorada automaticamente.
+#   SUPABASE_URL            → URL do projeto Supabase (ex: https://xyzxyz.supabase.co)
+#   SUPABASE_SERVICE_KEY    → service_role key do Supabase (NUNCA expor no frontend)
+#   NEXUS_ALLOWED_ORIGIN    → URL do site em produção (ex: https://nexus-ops.netlify.app)
+#   NEXUS_SEED_SECRET       → Senha avulsa para o endpoint ig-seed (pode remover após o seed)
+#
+#   Temporárias (podem ser removidas após executar ig-seed):
+#   IG_ACCESS_TOKEN         → Token long-lived Instagram (migrado para o Supabase via ig-seed)
+#   IG_ACCOUNT_ID           → Account ID Instagram (migrado para o Supabase via ig-seed)
+
+# ── Scheduled Functions (Netlify) ────────────────────────────────────────────
+# Requer Netlify Pro ou superior. No plano gratuito, use o Supabase pg_cron
+# ou ative manualmente via dashboard.
+
+[functions."ig-token-refresh"]
+  schedule = "0 9 * * 1"
+  # Toda segunda-feira às 09h — verifica e renova token Instagram se < 7 dias
+
+[functions."ig-daily-snapshot"]
+  schedule = "0 23 * * *"
+  # Todo dia às 23h — garante que o snapshot diário seja salvo no Supabase
 
 # ── Security Headers (OWASP A05 — Security Misconfiguration) ────────────────
-# Aplicado a TODAS as rotas, não só HTML
 [[headers]]
   for = "/*"
   [headers.values]
-    # Impede clickjacking (carregamento em iframe de outros domínios)
     X-Frame-Options = "DENY"
-
-    # Impede MIME sniffing — browser respeita o Content-Type declarado
     X-Content-Type-Options = "nosniff"
-
-    # Só envia Referer para mesma origem; nunca vaza URL para terceiros
     Referrer-Policy = "strict-origin-when-cross-origin"
-
-    # Força HTTPS por 1 ano, incluindo subdomínios
     Strict-Transport-Security = "max-age=31536000; includeSubDomains; preload"
-
-    # Desabilita APIs de hardware sensíveis
     Permissions-Policy = "camera=(), microphone=(), geolocation=(), payment=(), usb=()"
-
-    # CSP: define exatamente quais origens podem carregar cada tipo de recurso
-    # - default-src 'self': tudo de mesma origem por padrão
-    # - script-src: permite inline scripts (necessário para a app) + CDNs usados
-    # - style-src: inline styles + Google Fonts + CDNs
-    # - img-src: permite data URIs, HTTPS (thumbnails Instagram), blob
-    # - connect-src: permite chamadas fetch apenas para Anthropic e Facebook APIs via functions (same-origin)
-    # - font-src: Google Fonts
-    # - frame-ancestors: substitui X-Frame-Options para browsers modernos
     Content-Security-Policy = "default-src 'self'; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdnjs.cloudflare.com; font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com; img-src 'self' data: blob: https:; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self';"
-
-    # Remove header que revela tecnologia usada
     X-Powered-By = ""

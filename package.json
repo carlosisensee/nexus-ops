@@ -1,0 +1,9 @@
+{
+  "name": "nexus-ops",
+  "version": "1.0.0",
+  "description": "Nexus Ops Hub — plataforma interna de operações Casa Encanto",
+  "private": true,
+  "dependencies": {
+    "@supabase/supabase-js": "^2.45.4"
+  }
+}
