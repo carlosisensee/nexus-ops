@@ -618,6 +618,7 @@ function perfLabel(er) {
 
 function typeLabel(t) {
   if (t === 'REEL')           return { text: 'Reel',      cls: 'type-reel'     };
+  if (t === 'VIDEO')          return { text: 'Vídeo',     cls: 'type-reel'     };
   if (t === 'CAROUSEL_ALBUM') return { text: 'Carrossel', cls: 'type-carousel' };
   return                             { text: 'Imagem',    cls: 'type-image'    };
 }
@@ -855,6 +856,7 @@ function updateChartsFromAPI(posts) {
   posts.forEach(function(p) {
     var label = p.media_type === 'CAROUSEL_ALBUM' ? 'Carrossel'
               : p.media_type === 'REEL'           ? 'Reels'
+              : p.media_type === 'VIDEO'          ? 'Vídeos'
               :                                     'Imagens';
     if (!byType[label]) byType[label] = { sum: 0, count: 0 };
     byType[label].sum   += (p.engagement_rate || 0);
@@ -1257,11 +1259,12 @@ async function loadInstagramData(period) {
       if (!p.thumb_color) {
         var colors = {
           REEL:           'linear-gradient(135deg,#6d28d9,#7c3aed)',
+          VIDEO:          'linear-gradient(135deg,#7c3aed,#9333ea)',
           CAROUSEL_ALBUM: 'linear-gradient(135deg,#0ea5e9,#0284c7)',
           IMAGE:          'linear-gradient(135deg,#0891b2,#0e7490)',
         };
         p.thumb_color = colors[p.media_type] || 'linear-gradient(135deg,#64748b,#475569)';
-        p.thumb_icon  = p.media_type === 'REEL' ? 'play_circle'
+        p.thumb_icon  = (p.media_type === 'REEL' || p.media_type === 'VIDEO') ? 'play_circle'
                       : p.media_type === 'CAROUSEL_ALBUM' ? 'view_carousel' : 'image';
       }
       // Usa thumbnail real se disponível

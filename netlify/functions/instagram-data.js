@@ -211,7 +211,7 @@ exports.handler = async function (event) {
       posts.map(async (post) => {
         try {
           const isVideo  = post.media_type === 'VIDEO' || post.media_type === 'REEL';
-          const metrics  = isVideo ? 'impressions,reach,saved,shares,video_views' : 'impressions,reach,saved,shares';
+          const metrics  = isVideo ? 'impressions,reach,saved,video_views' : 'impressions,reach,saved';
           const iUrl     = new URL(`${GRAPH_BASE}/${post.id}/insights`);
           iUrl.searchParams.set('metric', metrics);
           iUrl.searchParams.set('access_token', token);
