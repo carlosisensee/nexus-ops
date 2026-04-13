@@ -720,10 +720,10 @@
     document.getElementById('gen-progress').classList.remove('hidden');
 
     try {
-      // Step 1: resize image (max 1024px para GLB, 2048px para thumbnail)
+      // Step 1: resize image (JPEG 2048px para thumbnail, PNG 1024px para GLB)
       setProgress(8, 'Comprimindo imagem…');
       const { base64, mime, dataUrl } = await resizeImage(selectedFile, 2048, 0.85);
-      const { dataUrl: glbDataUrl }   = await resizeImage(selectedFile, 1024, 0.90);
+      const glbDataUrl                = await resizeImagePng(selectedFile, 1024);
 
       // Step 2: remover fundo da versão para GLB
       setProgress(25, 'Removendo fundo da imagem…');
@@ -802,10 +802,32 @@
     });
   }
 
-  // ── BACKGROUND REMOVAL (canvas flood-fill das bordas) ────────────────────
-  // Detecta a cor de fundo pelos pixels de borda e remove por flood-fill.
-  // Funciona bem para fotos flatlay em fundo branco/cinza claro.
-  function removeBackground(dataUrl, tolerance = 32) {
+  // Versão PNG para o GLB — sem artefatos de compressão JPEG que prejudicam o flood-fill
+  function resizeImagePng(file, maxPx) {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => {
+        let { width: w, height: h } = img;
+        if (w > maxPx || h > maxPx) {
+          const ratio = Math.min(maxPx / w, maxPx / h);
+          w = Math.round(w * ratio);
+          h = Math.round(h * ratio);
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = w; canvas.height = h;
+        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+        resolve(canvas.toDataURL('image/png'));
+      };
+      img.onerror = reject;
+      img.src = URL.createObjectURL(file);
+    });
+  }
+
+  // ── BACKGROUND REMOVAL (flood-fill dos 4 cantos) ─────────────────────────
+  // Semeie APENAS dos 4 cantos para evitar comer o tapete quando ele toca a borda.
+  // Usa distância Euclidiana (mais precisa que delta por canal).
+  // Funciona bem para fotos flatlay em fundo branco/cinza claro/bege.
+  function removeBackground(dataUrl, tolerance = 30) {
     return new Promise((resolve) => {
       const img = new Image();
       img.onload = () => {
@@ -817,45 +839,46 @@
         const imageData = ctx.getImageData(0, 0, W, H);
         const data = imageData.data;
 
-        // Amostrar cor de fundo: média dos pixels nas 4 bordas
-        const samplePts = [];
-        for (let x = 0; x < W; x += Math.max(1, Math.floor(W / 20))) {
-          samplePts.push(x, 0);         // borda superior
-          samplePts.push(x, H - 1);     // borda inferior
-        }
-        for (let y = 0; y < H; y += Math.max(1, Math.floor(H / 20))) {
-          samplePts.push(0, y);         // borda esquerda
-          samplePts.push(W - 1, y);     // borda direita
-        }
-
+        // Amostrar cor de fundo: média dos pixels numa janela 8×8 em cada canto
+        const cs = Math.min(8, Math.floor(Math.min(W, H) / 16));
         let sr = 0, sg = 0, sb = 0, n = 0;
-        for (let i = 0; i < samplePts.length; i += 2) {
-          const idx = (samplePts[i + 1] * W + samplePts[i]) * 4;
-          sr += data[idx]; sg += data[idx + 1]; sb += data[idx + 2];
-          n++;
+        for (let dy = 0; dy < cs; dy++) {
+          for (let dx = 0; dx < cs; dx++) {
+            [
+              [dx,       dy      ],   // canto superior-esquerdo
+              [W-1-dx,   dy      ],   // canto superior-direito
+              [dx,       H-1-dy  ],   // canto inferior-esquerdo
+              [W-1-dx,   H-1-dy  ],   // canto inferior-direito
+            ].forEach(([cx, cy]) => {
+              const i = (cy * W + cx) * 4;
+              sr += data[i]; sg += data[i+1]; sb += data[i+2]; n++;
+            });
+          }
         }
-        const br = Math.round(sr / n), bg = Math.round(sg / n), bb = Math.round(sb / n);
+        const br = sr/n, bg_ = sg/n, bb = sb/n;
 
-        function matches(idx) {
-          return Math.abs(data[idx]     - br) <= tolerance &&
-                 Math.abs(data[idx + 1] - bg) <= tolerance &&
-                 Math.abs(data[idx + 2] - bb) <= tolerance;
+        // Distância Euclidiana — mais robusta que delta por canal
+        function dist(i) {
+          const dr = data[i]-br, dg = data[i+1]-bg_, db = data[i+2]-bb;
+          return Math.sqrt(dr*dr + dg*dg + db*db);
         }
 
-        // Flood-fill iterativo a partir de todos os pixels de borda
+        // Flood-fill iterativo — semeado APENAS nos 4 pixels de canto
         const visited = new Uint8Array(W * H);
-        const stack   = [];
-
-        for (let x = 0; x < W; x++) { stack.push(x + 0 * W); stack.push(x + (H - 1) * W); }
-        for (let y = 0; y < H; y++) { stack.push(0 + y * W); stack.push((W - 1) + y * W); }
+        const stack = [
+          0,                    // (0, 0)
+          W - 1,                // (W-1, 0)
+          (H - 1) * W,          // (0, H-1)
+          (H - 1) * W + W - 1,  // (W-1, H-1)
+        ];
 
         while (stack.length) {
           const px = stack.pop();
           if (visited[px]) continue;
           visited[px] = 1;
-          const idx4 = px * 4;
-          if (!matches(idx4)) continue;
-          data[idx4 + 3] = 0; // transparente
+          const i4 = px * 4;
+          if (dist(i4) > tolerance) continue;
+          data[i4 + 3] = 0; // transparente
 
           const x = px % W, y = (px / W) | 0;
           if (x > 0)     stack.push(px - 1);
@@ -864,18 +887,17 @@
           if (y < H - 1) stack.push(px + W);
         }
 
-        // Suavização leve das bordas (anti-alias): pixels semitransparentes na borda
+        // Suavização leve das bordas (1px anti-alias)
         for (let y = 1; y < H - 1; y++) {
           for (let x = 1; x < W - 1; x++) {
-            const idx = (y * W + x) * 4;
-            if (data[idx + 3] === 255) {
-              // Se algum vizinho for transparente, suavizar
-              const neighbors = [
-                ((y - 1) * W + x) * 4, ((y + 1) * W + x) * 4,
-                (y * W + (x - 1)) * 4, (y * W + (x + 1)) * 4,
+            const i = (y * W + x) * 4;
+            if (data[i + 3] === 255) {
+              const nb = [
+                ((y-1)*W+x)*4, ((y+1)*W+x)*4,
+                (y*W+(x-1))*4, (y*W+(x+1))*4,
               ];
-              const transCount = neighbors.filter(ni => data[ni + 3] === 0).length;
-              if (transCount > 0) data[idx + 3] = Math.round(255 * (1 - transCount * 0.25));
+              const t = nb.filter(ni => data[ni+3] === 0).length;
+              if (t > 0) data[i+3] = Math.round(255 * (1 - t * 0.25));
             }
           }
         }
