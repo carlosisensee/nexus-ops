@@ -10,7 +10,7 @@
 #   ANTHROPIC_API_KEY       → Chave da Anthropic (Claude Haiku)
 #   SUPABASE_URL            → URL do projeto Supabase (ex: https://xyzxyz.supabase.co)
 #   SUPABASE_SERVICE_KEY    → service_role key do Supabase (NUNCA expor no frontend)
-#   NEXUS_ALLOWED_ORIGIN    → URL do site em produção (ex: https://nexus-ops.netlify.app)
+#   NEXUS_ALLOWED_ORIGIN    → URL do site em produção (ex: https://nexus-ops-hub.netlify.app)
 #   NEXUS_SEED_SECRET       → Senha avulsa para o endpoint ig-seed (pode remover após o seed)
 #
 #   Temporárias (podem ser removidas após executar ig-seed):
@@ -37,6 +37,6 @@
     X-Content-Type-Options = "nosniff"
     Referrer-Policy = "strict-origin-when-cross-origin"
     Strict-Transport-Security = "max-age=31536000; includeSubDomains; preload"
-    Permissions-Policy = "camera=(), microphone=(), geolocation=(), payment=(), usb=()"
-    Content-Security-Policy = "default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://cdnjs.cloudflare.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.tailwindcss.com https://cdnjs.cloudflare.com; font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com; img-src 'self' data: blob: https:; connect-src 'self' https://*.supabase.co; frame-ancestors 'none'; base-uri 'self'; form-action 'self';"
+    Permissions-Policy = "camera=(self), microphone=(), geolocation=(), payment=(), usb=()"
+    Content-Security-Policy = "default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://ajax.googleapis.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.tailwindcss.com https://cdnjs.cloudflare.com; font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com; img-src 'self' data: blob: https:; connect-src 'self' https://*.supabase.co https://ajax.googleapis.com; frame-ancestors 'none'; base-uri 'self'; form-action 'self';"
     X-Powered-By = ""
