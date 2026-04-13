@@ -270,6 +270,7 @@
         <span class="material-symbols-outlined text-[36px] text-on-surface-variant mb-2 block" style="font-variation-settings:'FILL' 0,'wght' 200,'GRAD' 0,'opsz' 48;">image</span>
         <p class="font-label text-sm font-600 text-on-surface mb-0.5">Arraste a foto flatlay aqui</p>
         <p class="font-body text-xs text-on-surface-variant">ou clique para selecionar · JPG, PNG, WebP · máx 10 MB</p>
+        <p class="font-body text-xs text-on-surface-variant mt-1">💡 <strong>PNG com fundo transparente</strong> → sem remoção automática · resultado mais fiel</p>
       </div>
       <input type="file" id="file-input" accept="image/jpeg,image/png,image/webp" class="hidden" onchange="handleFileSelect(event)" />
 
@@ -725,9 +726,18 @@
       const { base64, mime, dataUrl } = await resizeImage(selectedFile, 2048, 0.85);
       const glbDataUrl                = await resizeImagePng(selectedFile, 1024);
 
-      // Step 2: remover fundo da versão para GLB
-      setProgress(25, 'Removendo fundo da imagem…');
-      const cleanDataUrl = await removeBackground(glbDataUrl);
+      // Step 2: remoção de fundo
+      // PNG → já tem fundo transparente, usa direto
+      // JPG  → aplica flood-fill automático
+      const isPng = selectedFile.type === 'image/png';
+      let cleanDataUrl;
+      if (isPng) {
+        setProgress(25, 'PNG detectado — usando transparência original…');
+        cleanDataUrl = glbDataUrl;
+      } else {
+        setProgress(25, 'Removendo fundo da imagem…');
+        cleanDataUrl = await removeBackground(glbDataUrl);
+      }
 
       // Step 3: upload thumbnail (imagem original, com fundo) para o card
       setProgress(45, 'Enviando imagem…');
