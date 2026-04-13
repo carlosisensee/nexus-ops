@@ -1,169 +1,187 @@
 /**
- * Nexus Ops — Carpet AR Widget
+ * Nexus Ops — Carpet AR Widget  v2
  * ============================================================
- * Cole este script no GTM (Custom HTML tag) ou diretamente no
- * <head> do site do produto. Ele lê o SKU do dataLayer e injeta
- * automaticamente o botão "Ver no meu ambiente" quando existe um
- * modelo 3D pronto para aquele SKU.
+ * Lê o SKU do dataLayer (VNDA / GA4 / UA / genérico), consulta
+ * a API do Nexus e injeta o botão "Ver no ambiente" no canto
+ * superior direito da primeira foto da galeria do produto.
  *
- * Configuração:
- *   window.NexusARConfig = {
- *     apiBase:  'https://nexus-ops-hub.netlify.app',  // URL do Nexus (padrão)
- *     skuField: 'auto',        // campo do datalayer: 'auto' tenta os comuns
- *                              // ou especifique: 'ecommerce.detail.products.0.id'
- *     insertAfter: '.buy-box', // seletor CSS do container alvo (ou 'auto')
- *     buttonText: 'Ver no meu ambiente 🏠', // texto do botão
- *     buttonClass: '',         // classe(s) CSS adicionais para o botão
- *   };
+ * Instalação via GTM — Custom HTML tag:
+ * ──────────────────────────────────────
+ *   <script>
+ *     window.NexusARConfig = {
+ *       // Opcional — sobrescreve os padrões abaixo
+ *       apiBase:    'https://nexus-ops-hub.netlify.app',
+ *       skuField:   'auto',  // 'auto' ou caminho dotted: 'ecommerce.items.0.item_reference'
+ *       buttonText: 'Ver no ambiente',
+ *     };
+ *   </script>
+ *   <script src="https://nexus-ops-hub.netlify.app/marketing/carpet-widget.js"></script>
+ *
+ * O tag deve disparar no trigger "Page View" ou "DOM Ready"
+ * da página de produto.
  * ============================================================
  */
 (function () {
   'use strict';
 
   var cfg = Object.assign({
-    apiBase:     'https://nexus-ops-hub.netlify.app',
-    skuField:    'auto',
-    insertAfter: 'auto',
-    buttonText:  'Ver no meu ambiente \uD83C\uDFE0',
-    buttonClass: '',
+    apiBase:    'https://nexus-ops-hub.netlify.app',
+    skuField:   'auto',
+    buttonText: 'Ver no ambiente',
   }, window.NexusARConfig || {});
 
-  // ── 1. Extrai SKU do dataLayer ─────────────────────────────────────────────
+  // ── 1. Extrai SKU do dataLayer ──────────────────────────────────────────────
   function getSku() {
     if (cfg.skuField !== 'auto') {
-      return deepGet(window, cfg.skuField.split('.'));
+      return deepGet(window, cfg.skuField.split('.')) || null;
     }
 
-    // Tenta as estruturas mais comuns de enhanced ecommerce / plataformas BR
     var dl = window.dataLayer || [];
     for (var i = dl.length - 1; i >= 0; i--) {
       var ev = dl[i];
 
-      // GTM Enhanced Ecommerce (GA4)
-      var g4 = deepGet(ev, ['ecommerce','items','0','item_id']);
+      // ── VNDA (GA4 enhanced ecommerce) ──
+      // item_reference é o código/referência do produto
+      var ref = deepGet(ev, ['ecommerce','items','0','item_reference']);
+      if (ref) return ref;
+
+      // item_id como fallback VNDA
+      var iid = deepGet(ev, ['ecommerce','items','0','item_id']);
+      if (iid) return String(iid);
+
+      // ── GA4 genérico ──
+      var g4 = deepGet(ev, ['ecommerce','items','0','item_sku'])
+            || deepGet(ev, ['ecommerce','items','0','sku']);
       if (g4) return g4;
 
-      // GTM Enhanced Ecommerce (UA)
-      var ua = deepGet(ev, ['ecommerce','detail','products','0','id']);
-      if (ua) return ua;
-      ua = deepGet(ev, ['ecommerce','impressions','0','id']);
+      // ── Universal Analytics (UA) ──
+      var ua = deepGet(ev, ['ecommerce','detail','products','0','id'])
+            || deepGet(ev, ['ecommerce','detail','products','0','sku']);
       if (ua) return ua;
 
-      // VTEX
-      if (ev.productId)  return ev.productId;
-      if (ev.productSku) return ev.productSku;
-
-      // Nuvemshop / Tray / genérico
-      if (ev.sku)        return ev.sku;
-      if (ev.product_id) return ev.product_id;
+      // ── Campos diretos (VTEX / Nuvemshop / Tray) ──
+      if (ev.productSku)  return ev.productSku;
+      if (ev.productId)   return String(ev.productId);
+      if (ev.sku)         return ev.sku;
+      if (ev.product_id)  return String(ev.product_id);
     }
 
-    // Fallback: meta tag comum em Shopify / WooCommerce / VTEX
+    // ── Fallback: meta tags comuns ──
     var meta = document.querySelector(
-      'meta[property="product:retailer_item_id"], ' +
-      'meta[name="product_id"], ' +
+      'meta[property="product:retailer_item_id"],' +
+      'meta[name="product_id"],' +
       'meta[name="sku"]'
     );
-    if (meta) return meta.content;
-
-    return null;
+    return meta ? meta.content : null;
   }
 
   function deepGet(obj, keys) {
     return keys.reduce(function (acc, k) {
-      if (acc == null) return undefined;
-      return typeof acc[k] !== 'undefined' ? acc[k] : undefined;
+      return (acc != null && acc[k] !== undefined) ? acc[k] : undefined;
     }, obj);
   }
 
-  // ── 2. Busca modelo na API ─────────────────────────────────────────────────
-  function fetchModel(sku, callback) {
-    var url = cfg.apiBase + '/.netlify/functions/carpet-api?action=by-sku&sku=' + encodeURIComponent(sku);
+  // ── 2. Busca modelo na API (XHR para compatibilidade máxima) ────────────────
+  function fetchModel(sku, cb) {
+    var url = cfg.apiBase +
+      '/.netlify/functions/carpet-api?action=by-sku&sku=' +
+      encodeURIComponent(sku);
     var xhr = new XMLHttpRequest();
     xhr.open('GET', url, true);
     xhr.onreadystatechange = function () {
       if (xhr.readyState !== 4) return;
       if (xhr.status === 200) {
-        try { callback(JSON.parse(xhr.responseText)); }
-        catch (e) { /* silencioso */ }
+        try { cb(JSON.parse(xhr.responseText)); } catch (e) { /* silencioso */ }
       }
     };
     xhr.send();
   }
 
-  // ── 3. Injeta o botão na página ─────────────────────────────────────────────
+  // ── 3. Injeta botão na galeria ─────────────────────────────────────────────
   function injectButton(arUrl) {
-    // Evita duplicatas
     if (document.getElementById('nexus-ar-btn')) return;
 
     var btn = document.createElement('a');
-    btn.id        = 'nexus-ar-btn';
-    btn.href      = arUrl;
-    btn.target    = '_blank';
-    btn.rel       = 'noopener';
-    btn.innerHTML =
-      '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" ' +
-      'stroke="currentColor" stroke-width="2.2" style="vertical-align:middle;margin-right:6px">' +
-      '<path d="M21 7.5V6a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v1.5"/>' +
-      '<path d="M3 13.5V18a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-4.5"/>' +
-      '<path d="m9 12 2 2 4-4"/></svg>' +
-      cfg.buttonText;
+    btn.id       = 'nexus-ar-btn';
+    btn.href     = arUrl;
+    btn.target   = '_blank';
+    btn.rel      = 'noopener noreferrer';
+    btn.title    = 'Visualizar tapete no seu ambiente com Realidade Aumentada';
 
-    // Estilos base (sobrescrevíveis via buttonClass)
-    btn.setAttribute('style', [
+    // ── Ícone AR (cubo 3D simples) ──
+    btn.innerHTML =
+      '<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" ' +
+      'fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" ' +
+      'style="flex-shrink:0">' +
+      '<path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>' +
+      '<polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/>' +
+      '</svg>' +
+      '<span>' + cfg.buttonText + '</span>';
+
+    // ── Estilo: pill no canto superior direito ──
+    btn.style.cssText = [
+      'position:absolute',
+      'top:12px',
+      'right:12px',
+      'z-index:20',
       'display:inline-flex',
       'align-items:center',
-      'padding:11px 22px',
-      'background:#00327d',
-      'color:#fff',
-      'font-family:inherit',
-      'font-size:14px',
+      'gap:6px',
+      'padding:7px 13px',
+      'background:rgba(0,30,80,0.80)',
+      'backdrop-filter:blur(6px)',
+      '-webkit-backdrop-filter:blur(6px)',
+      'color:#ffffff',
+      'font-size:12px',
       'font-weight:700',
-      'border-radius:8px',
+      'font-family:inherit',
+      'letter-spacing:.02em',
+      'border-radius:999px',
       'text-decoration:none',
-      'margin-top:12px',
-      'box-shadow:0 2px 12px rgba(0,50,125,.3)',
-      'transition:opacity .15s',
-    ].join(';'));
-    btn.onmouseover = function () { btn.style.opacity = '.85'; };
-    btn.onmouseout  = function () { btn.style.opacity = '1'; };
+      'box-shadow:0 2px 10px rgba(0,0,0,.30)',
+      'transition:opacity .15s,transform .15s',
+      'cursor:pointer',
+      'user-select:none',
+    ].join(';');
 
-    if (cfg.buttonClass) btn.className = cfg.buttonClass;
+    btn.addEventListener('mouseover', function() { btn.style.opacity='.85'; });
+    btn.addEventListener('mouseout',  function() { btn.style.opacity='1'; });
 
-    // Localiza onde inserir
-    var anchor = findInsertionPoint();
-    if (anchor) {
-      anchor.parentNode.insertBefore(btn, anchor.nextSibling);
+    // ── Destino de injeção: primeiro slide da galeria principal ──
+    // VNDA: #image-0  |  fallback: primeiro .swiper-slide do main-slider
+    var target =
+      document.querySelector('#image-0') ||
+      document.querySelector('[data-main-slider] .swiper-slide:first-child') ||
+      document.querySelector('[data-main-slider] .item-image') ||
+      document.querySelector('.main-slider .swiper-slide:first-child') ||
+      document.querySelector('.product-images');
+
+    if (target) {
+      // Garante position:relative para o absolute funcionar
+      var pos = window.getComputedStyle(target).position;
+      if (pos === 'static') target.style.position = 'relative';
+      target.appendChild(btn);
     } else {
-      document.body.appendChild(btn);
+      // Fallback: antes/depois do botão de compra
+      var buyBtn = document.querySelector(
+        '[class*="buy-button"],[class*="buyButton"],[class*="add-to-cart"],' +
+        '#add-to-cart,.vtex-button,.product-form__submit,.js-add-to-cart'
+      );
+      if (buyBtn) {
+        btn.style.position = 'static';   // não é overlay, é inline
+        btn.style.display  = 'flex';
+        btn.style.marginTop = '12px';
+        buyBtn.parentNode.insertBefore(btn, buyBtn.nextSibling);
+      } else {
+        document.body.appendChild(btn);
+      }
     }
-  }
-
-  function findInsertionPoint() {
-    if (cfg.insertAfter !== 'auto') {
-      return document.querySelector(cfg.insertAfter);
-    }
-
-    // Candidatos comuns (Shopify, VTEX, WooCommerce, Nuvemshop, Tray)
-    var selectors = [
-      '[class*="buy-button"]', '[class*="buyButton"]',
-      '[class*="add-to-cart"]', '[class*="addToCart"]',
-      '#add-to-cart', '.product-form__submit',
-      '.vtex-button', '[class*="ProductButton"]',
-      '.js-add-to-cart', '.btn-add-to-cart',
-      '[data-testid*="buy"]', '[data-action*="cart"]',
-    ];
-    for (var i = 0; i < selectors.length; i++) {
-      var el = document.querySelector(selectors[i]);
-      if (el) return el;
-    }
-    return null;
   }
 
   // ── 4. Bootstrap ─────────────────────────────────────────────────────────────
   function boot() {
     var sku = getSku();
-    if (!sku) return; // sem SKU, não faz nada
+    if (!sku) return;
 
     fetchModel(sku, function (data) {
       if (data && data.found && data.ar_url) {
@@ -172,11 +190,10 @@
     });
   }
 
-  // Aguarda DOM + dataLayer estar populado
+  // Aguarda DOM + dataLayer populado (GTM preenche antes do DOMContentLoaded)
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', boot);
   } else {
-    // Pequeno delay para GTM preencher o dataLayer
-    setTimeout(boot, 300);
+    setTimeout(boot, 200); // delay mínimo para GTM/VNDA popularem o dataLayer
   }
 })();
