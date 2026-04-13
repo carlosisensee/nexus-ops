@@ -977,17 +977,11 @@
           });
           const plane = new THREE.Mesh(geom, mat);
           plane.rotation.x = -Math.PI / 2;
-          plane.position.y = 0.008;
+          plane.position.y = 0.001; // 1mm acima do chão — sem z-fighting
           plane.name = 'carpet';
           scene.add(plane);
 
-          // Base fina (espessura visual do tapete)
-          const boxGeom = new THREE.BoxGeometry(geomW, 0.008, geomH);
-          const boxMat  = new THREE.MeshStandardMaterial({ color: 0x888888, roughness: 1 });
-          const box     = new THREE.Mesh(boxGeom, boxMat);
-          box.position.y = 0.004;
-          box.name = 'carpet_base';
-          scene.add(box);
+
 
           // Export
           const exporter = new GLTFExporter();
