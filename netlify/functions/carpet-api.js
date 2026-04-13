@@ -256,6 +256,47 @@ exports.handler = async function (event) {
     }
   }
 
+  // ── POST upload-size-glb ────────────────────────────────────
+  // Faz upload do GLB para um tamanho específico e armazena na tabela carpet_sizes
+  if (action === 'upload-size-glb' && method === 'POST') {
+    let body;
+    try { body = JSON.parse(event.body || '{}'); } catch { return err(cors, 400, 'JSON inválido.'); }
+
+    const { size_id, model_id, data: glbData, set_as_primary = false } = body;
+    if (!size_id || !model_id || !glbData) return err(cors, 400, 'size_id, model_id e data são obrigatórios.');
+    if (glbData.length > MAX_PAYLOAD_B) return err(cors, 413, 'GLB muito grande.');
+
+    try {
+      const supabase  = getSupabaseClient();
+      const buf       = Buffer.from(glbData, 'base64');
+      const path      = `${model_id}/size-${size_id}.glb`;
+
+      const { error: upErr } = await supabase.storage
+        .from(BUCKET).upload(path, buf, { contentType: 'model/gltf-binary', upsert: true });
+      if (upErr) throw upErr;
+
+      const { data: urlData } = supabase.storage.from(BUCKET).getPublicUrl(path);
+      const glbUrl = urlData.publicUrl;
+
+      // Atualiza carpet_sizes
+      const { error: szErr } = await supabase
+        .from('carpet_sizes').update({ glb_path: path, glb_url: glbUrl }).eq('id', size_id);
+      if (szErr) throw szErr;
+
+      // Opcional: atualiza modelo principal também
+      if (set_as_primary) {
+        const { error: mErr } = await supabase
+          .from('carpet_models').update({ glb_path: path, glb_url: glbUrl, status: 'ready' }).eq('id', model_id);
+        if (mErr) throw mErr;
+      }
+
+      return ok(cors, { glb_url: glbUrl });
+    } catch (e) {
+      console.error('[carpet-api] upload-size-glb error:', e.message);
+      return err(cors, 500, 'Erro no upload do GLB por tamanho.');
+    }
+  }
+
   // ── POST update-status ───────────────────────────────────────
   if (action === 'update-status' && method === 'POST') {
     let body;

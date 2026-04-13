@@ -661,7 +661,7 @@
     if (m.sizes.length) {
       m.sizes.forEach(s => {
         const opt = document.createElement('option');
-        opt.value = JSON.stringify({ w: s.width_cm, h: s.height_cm });
+        opt.value = JSON.stringify({ id: s.id, w: s.width_cm, h: s.height_cm });
         opt.textContent = `${s.size_name}: ${s.width_cm}×${s.height_cm} cm`;
         sel.appendChild(opt);
       });
@@ -714,8 +714,9 @@
     if (!selectedFile) return;
 
     const modelId   = document.getElementById('gen-model-id').value;
-    const sizeJson  = document.getElementById('size-selector').value;
-    const { w, h }  = JSON.parse(sizeJson);
+    const allSizes  = JSON.parse(document.getElementById('gen-model-sizes-json').value || '[]');
+    // Usa primeiro tamanho como principal; se não tiver, usa seletor
+    const sizes = allSizes.length > 0 ? allSizes : [JSON.parse(document.getElementById('size-selector').value)].map(s => ({id: null, width_cm: s.w, height_cm: s.h}));
 
     document.getElementById('gen-upload-area').classList.add('hidden');
     document.getElementById('gen-progress').classList.remove('hidden');
@@ -727,15 +728,13 @@
       const glbDataUrl                = await resizeImagePng(selectedFile, 1024);
 
       // Step 2: remoção de fundo
-      // PNG → já tem fundo transparente, usa direto
-      // JPG  → aplica flood-fill automático
+      setProgress(25, 'Removendo fundo da imagem…');
       const isPng = selectedFile.type === 'image/png';
       let cleanDataUrl;
-      if (isPng) {
-        setProgress(25, 'PNG detectado — usando transparência original…');
+      if (isPng && await pngHasTransparency(glbDataUrl)) {
+        setProgress(25, 'PNG transparente detectado — usando canal alpha original…');
         cleanDataUrl = glbDataUrl;
       } else {
-        setProgress(25, 'Removendo fundo da imagem…');
         cleanDataUrl = await removeBackground(glbDataUrl);
       }
 
@@ -748,19 +747,36 @@
       const imgData = await imgRes.json();
       if (!imgRes.ok) throw new Error(imgData.error);
 
-      // Step 4: gerar GLB com dataURL LOCAL (sem CORS) + fundo removido
-      setProgress(60, 'Gerando modelo 3D…');
+      // Steps 4+5: gerar e fazer upload de um GLB por tamanho
       await setStatus(modelId, 'processing');
-      const glbBase64 = await generateGlb(cleanDataUrl, w, h);
+      for (let i = 0; i < sizes.length; i++) {
+        const s = sizes[i];
+        const pct = 58 + Math.round(((i + 0.3) / sizes.length) * 35);
+        setProgress(pct, `Gerando modelo 3D (${i+1}/${sizes.length})…`);
+        const glbBase64 = await generateGlb(cleanDataUrl, s.width_cm, s.height_cm);
 
-      // Step 5: upload GLB
-      setProgress(85, 'Enviando modelo…');
-      const glbRes = await fetch(`${API}?action=upload-glb`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ model_id: modelId, data: glbBase64 }),
-      });
-      const glbData = await glbRes.json();
-      if (!glbRes.ok) throw new Error(glbData.error);
+        const pct2 = 58 + Math.round(((i + 0.8) / sizes.length) * 35);
+        setProgress(pct2, `Enviando modelo (${i+1}/${sizes.length})…`);
+        const isPrimary = i === 0;
+
+        if (s.id) {
+          // Upload por tamanho (também seta model.glb_url se for o primeiro)
+          const r = await fetch(`${API}?action=upload-size-glb`, {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ size_id: s.id, model_id: modelId, data: glbBase64, set_as_primary: isPrimary }),
+          });
+          const rj = await r.json();
+          if (!r.ok) throw new Error(rj.error);
+        } else {
+          // Fallback: modelo sem sizes cadastradas — upload direto no modelo
+          const r = await fetch(`${API}?action=upload-glb`, {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ model_id: modelId, data: glbBase64 }),
+          });
+          const rj = await r.json();
+          if (!r.ok) throw new Error(rj.error);
+        }
+      }
 
       setProgress(100, 'Pronto!');
       await new Promise(r => setTimeout(r, 400));
@@ -830,6 +846,32 @@
       };
       img.onerror = reject;
       img.src = URL.createObjectURL(file);
+    });
+  }
+
+  // Verifica se um PNG dataURL já tem pixels transparentes nos cantos
+  // (diagnóstico rápido — se corners tiverem alpha < 200, o PNG já tem fundo removido)
+  function pngHasTransparency(dataUrl) {
+    return new Promise(resolve => {
+      const img = new Image();
+      img.onload = () => {
+        const c = document.createElement('canvas');
+        c.width = img.width; c.height = img.height;
+        const ctx = c.getContext('2d');
+        ctx.drawImage(img, 0, 0);
+        const W = img.width, H = img.height;
+        const corners = [
+          ctx.getImageData(0, 0, 1, 1).data,
+          ctx.getImageData(W-1, 0, 1, 1).data,
+          ctx.getImageData(0, H-1, 1, 1).data,
+          ctx.getImageData(W-1, H-1, 1, 1).data,
+        ];
+        // Se pelo menos 2 dos 4 cantos tiverem alpha < 200, já tem transparência
+        const transparentCorners = corners.filter(px => px[3] < 200).length;
+        resolve(transparentCorners >= 2);
+      };
+      img.onerror = () => resolve(false);
+      img.src = dataUrl;
     });
   }
 

@@ -524,20 +524,13 @@
   <input type="file" id="sim-file" accept="image/*" style="display:none;" onchange="simLoadRoom(event)" />
 
   <div class="sim-controls" id="sim-controls">
-    <div class="sim-ctrl-row">
-      <span class="sim-ctrl-label">Tamanho</span>
-      <input type="range" id="sim-scale" min="5" max="200" value="50" oninput="simRedraw(); document.getElementById('sim-scale-val').textContent=this.value+'%'" />
-      <span class="sim-ctrl-value" id="sim-scale-val">50%</span>
-    </div>
-    <div class="sim-ctrl-row">
-      <span class="sim-ctrl-label">Rotação</span>
-      <input type="range" id="sim-rot" min="0" max="360" value="0" oninput="simRedraw(); document.getElementById('sim-rot-val').textContent=this.value+'°'" />
-      <span class="sim-ctrl-value" id="sim-rot-val">0°</span>
-    </div>
+    <p style="font-size:.7rem;color:#9ca3af;text-align:center;margin-bottom:8px;">
+      Arraste os <strong style="color:#60a5fa">cantos azuis</strong> para ajustar a perspectiva do tapete no ambiente
+    </p>
     <div class="sim-ctrl-row">
       <span class="sim-ctrl-label">Opacidade</span>
-      <input type="range" id="sim-opacity" min="20" max="100" value="100" oninput="simRedraw(); document.getElementById('sim-opacity-val').textContent=this.value+'%'" />
-      <span class="sim-ctrl-value" id="sim-opacity-val">100%</span>
+      <input type="range" id="sim-opacity" min="20" max="100" value="90" oninput="simRedraw(); document.getElementById('sim-opacity-val').textContent=this.value+'%'" />
+      <span class="sim-ctrl-value" id="sim-opacity-val">90%</span>
     </div>
     <div class="sim-btn-row">
       <button class="sim-action-btn sim-save-btn" onclick="simSave()">
@@ -548,9 +541,9 @@
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
         Compartilhar
       </button>
-      <button class="sim-action-btn sim-change-btn" onclick="document.getElementById('sim-file').click()">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
-        Trocar foto
+      <button class="sim-action-btn sim-change-btn" onclick="simResetCorners()" title="Resetar posição">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.5"/></svg>
+        Resetar
       </button>
     </div>
   </div>
@@ -632,8 +625,11 @@
   function selectSize(size, chipEl) {
     document.querySelectorAll('.size-chip').forEach(c => c.classList.remove('active'));
     chipEl.classList.add('active');
-    // Nota: o modelo 3D já foi gerado com as dimensões; a seleção serve de referência visual
-    // Em uma versão futura, cada tamanho pode ter seu próprio GLB
+    // Se o tamanho tiver GLB próprio, troca o modelo
+    if (size.glb_url) {
+      const mv = document.getElementById('mv');
+      mv.src = size.glb_url;
+    }
   }
 
   function showError(msg) {
@@ -652,27 +648,25 @@
     }
   }
 
-  // ── SIMULAÇÃO EM FOTO ─────────────────────────────────────────────────────
+  // ── SIMULAÇÃO EM FOTO — perspectiva com 4 handles ────────────────────────
   const SIM = {
-    roomImg:   null,   // HTMLImageElement — foto do ambiente
-    carpetImg: null,   // HTMLImageElement — textura do tapete
-    x: 0, y: 0,       // posição central do tapete no canvas
-    scale: 0.5,        // fator de escala (1 = largura total do canvas)
-    rot: 0,            // rotação em radianos
-    drag: false,
-    lastX: 0, lastY: 0,
-    ptrs: new Map(),   // pointerEvents ativos (para pinch)
+    roomImg:   null,
+    carpetImg: null,
+    corners:   null,   // [{x,y}×4] TL,TR,BR,BL em coords de canvas (px*dpr)
+    activeHandle: -1,
+    draggingQuad: false,
+    dragRef:   null,   // {startX, startY, startCorners}
+    ptrs:      new Map(),
     lastPinchDist: 0,
-    lastPinchAngle: 0,
+    lastPinchCorners: null,
   };
 
   function openSim() {
     document.getElementById('sim-overlay').classList.add('open');
-    // Carrega imagem do tapete uma única vez
     if (!SIM.carpetImg && window._currentModel?.image_url) {
       const img = new Image();
       img.crossOrigin = 'anonymous';
-      img.onload = () => { SIM.carpetImg = img; simRedraw(); };
+      img.onload = () => { SIM.carpetImg = img; if (SIM.roomImg) simInitCanvas(); };
       img.src = window._currentModel.image_url;
     }
     setTimeout(simInitCanvas, 50);
@@ -685,15 +679,92 @@
   function simInitCanvas() {
     const wrap   = document.querySelector('.sim-canvas-wrap');
     const canvas = document.getElementById('sim-canvas');
-    canvas.width  = wrap.clientWidth  * window.devicePixelRatio;
-    canvas.height = wrap.clientHeight * window.devicePixelRatio;
+    const dpr    = window.devicePixelRatio || 1;
+    canvas.width  = wrap.clientWidth  * dpr;
+    canvas.height = wrap.clientHeight * dpr;
     canvas.style.width  = wrap.clientWidth  + 'px';
     canvas.style.height = wrap.clientHeight + 'px';
-    SIM.x = canvas.width  / 2;
-    SIM.y = canvas.height / 2;
-    SIM.scale = (canvas.width * 0.45) / Math.max(SIM.carpetImg?.width || 400, 1);
+    simResetCorners();
     simRedraw();
     simBindEvents(canvas);
+  }
+
+  function simResetCorners() {
+    const canvas = document.getElementById('sim-canvas');
+    if (!canvas) return;
+    const CW = canvas.width, CH = canvas.height;
+    const dpr = window.devicePixelRatio || 1;
+    const carpetAR = SIM.carpetImg
+      ? (SIM.carpetImg.naturalWidth || SIM.carpetImg.width) / (SIM.carpetImg.naturalHeight || SIM.carpetImg.height)
+      : 1.4;
+    const cw = CW * 0.55;
+    const ch = cw / carpetAR;
+    const cx = CW / 2, cy = CH / 2;
+    SIM.corners = [
+      { x: cx - cw/2, y: cy - ch/2 },  // TL
+      { x: cx + cw/2, y: cy - ch/2 },  // TR
+      { x: cx + cw/2, y: cy + ch/2 },  // BR
+      { x: cx - cw/2, y: cy + ch/2 },  // BL
+    ];
+    simRedraw();
+  }
+
+  // ── Perspective texture mapping via bilinear subdivision ──────────────────
+  function drawTexturedQuad(ctx, img, corners, steps) {
+    const [tl, tr, br, bl] = corners;
+    const iw = img.naturalWidth  || img.width;
+    const ih = img.naturalHeight || img.height;
+
+    function blerp(u, v) {
+      return {
+        x: tl.x*(1-u)*(1-v) + tr.x*u*(1-v) + bl.x*(1-u)*v + br.x*u*v,
+        y: tl.y*(1-u)*(1-v) + tr.y*u*(1-v) + bl.y*(1-u)*v + br.y*u*v,
+      };
+    }
+
+    for (let iy = 0; iy < steps; iy++) {
+      for (let ix = 0; ix < steps; ix++) {
+        const u0 = ix/steps, u1 = (ix+1)/steps;
+        const v0 = iy/steps, v1 = (iy+1)/steps;
+        const p00 = blerp(u0,v0), p10 = blerp(u1,v0);
+        const p01 = blerp(u0,v1), p11 = blerp(u1,v1);
+        drawAffineTriangle(ctx, img,
+          {cx:p00.x, cy:p00.y, sx:u0*iw, sy:v0*ih},
+          {cx:p10.x, cy:p10.y, sx:u1*iw, sy:v0*ih},
+          {cx:p11.x, cy:p11.y, sx:u1*iw, sy:v1*ih}
+        );
+        drawAffineTriangle(ctx, img,
+          {cx:p00.x, cy:p00.y, sx:u0*iw, sy:v0*ih},
+          {cx:p11.x, cy:p11.y, sx:u1*iw, sy:v1*ih},
+          {cx:p01.x, cy:p01.y, sx:u0*iw, sy:v1*ih}
+        );
+      }
+    }
+  }
+
+  function drawAffineTriangle(ctx, img, p0, p1, p2) {
+    ctx.save();
+    ctx.beginPath();
+    ctx.moveTo(p0.cx, p0.cy);
+    ctx.lineTo(p1.cx, p1.cy);
+    ctx.lineTo(p2.cx, p2.cy);
+    ctx.closePath();
+    ctx.clip();
+    const du0 = p1.sx-p0.sx, dv0 = p1.sy-p0.sy;
+    const du1 = p2.sx-p0.sx, dv1 = p2.sy-p0.sy;
+    const dx0 = p1.cx-p0.cx, dy0 = p1.cy-p0.cy;
+    const dx1 = p2.cx-p0.cx, dy1 = p2.cy-p0.cy;
+    const det = du0*dv1 - dv0*du1;
+    if (Math.abs(det) < 0.5) { ctx.restore(); return; }
+    const a = (dx0*dv1 - dx1*dv0) / det;
+    const b = (dx1*du0 - dx0*du1) / det;
+    const c = (dy0*dv1 - dy1*dv0) / det;
+    const d = (dy1*du0 - dy0*du1) / det;
+    const e = p0.cx - a*p0.sx - b*p0.sy;
+    const f = p0.cy - c*p0.sx - d*p0.sy;
+    ctx.transform(a, c, b, d, e, f);
+    ctx.drawImage(img, 0, 0);
+    ctx.restore();
   }
 
   function simRedraw() {
@@ -702,108 +773,145 @@
     const ctx = canvas.getContext('2d');
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // ── Foto do ambiente
+    // Room photo
     if (SIM.roomImg) {
-      const r = Math.min(canvas.width / SIM.roomImg.width, canvas.height / SIM.roomImg.height);
-      const rw = SIM.roomImg.width * r, rh = SIM.roomImg.height * r;
-      const rx = (canvas.width - rw) / 2,  ry = (canvas.height - rh) / 2;
-      ctx.drawImage(SIM.roomImg, rx, ry, rw, rh);
+      const r = Math.min(canvas.width/SIM.roomImg.width, canvas.height/SIM.roomImg.height);
+      const rw = SIM.roomImg.width*r, rh = SIM.roomImg.height*r;
+      ctx.drawImage(SIM.roomImg, (canvas.width-rw)/2, (canvas.height-rh)/2, rw, rh);
     }
 
-    // ── Tapete
-    if (SIM.carpetImg) {
-      // Lê sliders (UI → lógica)
-      const uiScale   = parseFloat(document.getElementById('sim-scale')?.value   || 50) / 100;
-      const uiRot     = parseFloat(document.getElementById('sim-rot')?.value     || 0) * Math.PI / 180;
-      const uiOpacity = parseFloat(document.getElementById('sim-opacity')?.value || 100) / 100;
-
-      const drawW = SIM.carpetImg.width  * SIM.scale * uiScale;
-      const drawH = SIM.carpetImg.height * SIM.scale * uiScale;
-
+    // Carpet with perspective mapping
+    if (SIM.carpetImg && SIM.corners) {
+      const opacity = parseFloat(document.getElementById('sim-opacity')?.value || 90) / 100;
       ctx.save();
-      ctx.translate(SIM.x, SIM.y);
-      ctx.rotate(SIM.rot + uiRot);
-      ctx.globalAlpha = uiOpacity;
-      ctx.drawImage(SIM.carpetImg, -drawW / 2, -drawH / 2, drawW, drawH);
+      ctx.globalAlpha = opacity;
+      drawTexturedQuad(ctx, SIM.carpetImg, SIM.corners, 24);
       ctx.restore();
     }
+
+    // Corner handles
+    if (SIM.corners) {
+      const dpr = window.devicePixelRatio || 1;
+      const R = 14 * dpr;
+      SIM.corners.forEach((c, i) => {
+        ctx.beginPath();
+        ctx.arc(c.x, c.y, R, 0, Math.PI*2);
+        ctx.fillStyle = i === SIM.activeHandle ? '#93c5fd' : 'rgba(59,130,246,0.9)';
+        ctx.fill();
+        ctx.strokeStyle = '#fff';
+        ctx.lineWidth = 2 * dpr;
+        ctx.stroke();
+        // Cross inside handle
+        ctx.strokeStyle = '#fff';
+        ctx.lineWidth = 1.5 * dpr;
+        ctx.beginPath();
+        ctx.moveTo(c.x - 6*dpr, c.y); ctx.lineTo(c.x + 6*dpr, c.y);
+        ctx.moveTo(c.x, c.y - 6*dpr); ctx.lineTo(c.x, c.y + 6*dpr);
+        ctx.stroke();
+      });
+    }
+  }
+
+  function hitHandle(px, py) {
+    if (!SIM.corners) return -1;
+    const dpr = window.devicePixelRatio || 1;
+    const R = 22 * dpr;
+    for (let i = 0; i < 4; i++) {
+      const dx = px - SIM.corners[i].x, dy = py - SIM.corners[i].y;
+      if (dx*dx + dy*dy <= R*R) return i;
+    }
+    return -1;
+  }
+
+  function pointInQuad(px, py) {
+    if (!SIM.corners) return false;
+    const [a, b, c, d] = SIM.corners;
+    function cross(ax,ay,bx,by,cx,cy) { return (bx-ax)*(cy-ay)-(by-ay)*(cx-ax); }
+    const c1=cross(a.x,a.y,b.x,b.y,px,py), c2=cross(b.x,b.y,c.x,c.y,px,py);
+    const c3=cross(c.x,c.y,d.x,d.y,px,py), c4=cross(d.x,d.y,a.x,a.y,px,py);
+    return (c1>0&&c2>0&&c3>0&&c4>0)||(c1<0&&c2<0&&c3<0&&c4<0);
   }
 
   function simBindEvents(canvas) {
-    // ── Pointer events (mouse + touch unificados)
-    canvas.addEventListener('pointerdown', e => {
+    // Remove previous listeners by replacing the canvas element
+    const newCanvas = canvas.cloneNode(true);
+    canvas.parentNode.replaceChild(newCanvas, canvas);
+    const cv = document.getElementById('sim-canvas');
+
+    const dpr = () => window.devicePixelRatio || 1;
+
+    cv.addEventListener('pointerdown', e => {
+      cv.setPointerCapture(e.pointerId);
       SIM.ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY });
-      canvas.setPointerCapture(e.pointerId);
+      e.preventDefault();
+
       if (SIM.ptrs.size === 1) {
-        SIM.drag  = true;
-        SIM.lastX = e.clientX * window.devicePixelRatio;
-        SIM.lastY = e.clientY * window.devicePixelRatio;
+        const px = e.clientX * dpr(), py = e.clientY * dpr();
+        const h = hitHandle(px, py);
+        if (h >= 0) {
+          SIM.activeHandle = h;
+          SIM.draggingQuad = false;
+        } else if (pointInQuad(px, py)) {
+          SIM.draggingQuad = true;
+          SIM.activeHandle = -1;
+          SIM.dragRef = { startX: px, startY: py, startCorners: SIM.corners.map(c=>({...c})) };
+        }
       }
       if (SIM.ptrs.size === 2) {
+        SIM.activeHandle = -1; SIM.draggingQuad = false;
         const pts = [...SIM.ptrs.values()];
-        SIM.lastPinchDist  = ptDist(pts[0], pts[1]);
-        SIM.lastPinchAngle = ptAngle(pts[0], pts[1]);
-        SIM.drag = false;
+        SIM.lastPinchDist = Math.hypot(pts[0].x-pts[1].x, pts[0].y-pts[1].y);
+        SIM.lastPinchCorners = SIM.corners.map(c=>({...c}));
       }
-    });
+    }, { passive: false });
 
-    canvas.addEventListener('pointermove', e => {
+    cv.addEventListener('pointermove', e => {
       if (!SIM.ptrs.has(e.pointerId)) return;
       SIM.ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      e.preventDefault();
+      const d = dpr();
+      const px = e.clientX * d, py = e.clientY * d;
 
-      const dpr = window.devicePixelRatio;
-
-      if (SIM.ptrs.size === 1 && SIM.drag) {
-        const cx = e.clientX * dpr, cy = e.clientY * dpr;
-        SIM.x += cx - SIM.lastX;
-        SIM.y += cy - SIM.lastY;
-        SIM.lastX = cx; SIM.lastY = cy;
-        simRedraw();
+      if (SIM.ptrs.size === 1) {
+        if (SIM.activeHandle >= 0) {
+          SIM.corners[SIM.activeHandle] = { x: px, y: py };
+          simRedraw();
+        } else if (SIM.draggingQuad && SIM.dragRef) {
+          const dx = px - SIM.dragRef.startX, dy = py - SIM.dragRef.startY;
+          SIM.corners = SIM.dragRef.startCorners.map(c => ({ x: c.x+dx, y: c.y+dy }));
+          simRedraw();
+        }
       }
-
       if (SIM.ptrs.size === 2) {
         const pts = [...SIM.ptrs.values()];
-        const d = ptDist(pts[0], pts[1]);
-        const a = ptAngle(pts[0], pts[1]);
-
-        if (SIM.lastPinchDist > 0) {
-          SIM.scale *= d / SIM.lastPinchDist;
-          SIM.scale  = Math.max(0.05, Math.min(SIM.scale, 10));
-        }
-        SIM.rot += a - SIM.lastPinchAngle;
-        SIM.lastPinchDist  = d;
-        SIM.lastPinchAngle = a;
+        const dist = Math.hypot(pts[0].x-pts[1].x, pts[0].y-pts[1].y);
+        const s = dist / (SIM.lastPinchDist || dist);
+        const mc = { x: (pts[0].x+pts[1].x)/2*d, y: (pts[0].y+pts[1].y)/2*d };
+        SIM.corners = (SIM.lastPinchCorners||SIM.corners).map(c => ({
+          x: mc.x + (c.x - mc.x) * (dist / (SIM.lastPinchDist||dist)),
+          y: mc.y + (c.y - mc.y) * (dist / (SIM.lastPinchDist||dist)),
+        }));
+        SIM.lastPinchDist = dist;
+        SIM.lastPinchCorners = SIM.corners.map(c=>({...c}));
         simRedraw();
       }
-    });
+    }, { passive: false });
 
-    ['pointerup','pointercancel'].forEach(ev =>
-      canvas.addEventListener(ev, e => {
-        SIM.ptrs.delete(e.pointerId);
-        if (SIM.ptrs.size === 0) SIM.drag = false;
-        if (SIM.ptrs.size === 1) {
-          const pt = [...SIM.ptrs.values()][0];
-          SIM.lastX = pt.x * window.devicePixelRatio;
-          SIM.lastY = pt.y * window.devicePixelRatio;
-          SIM.drag = true;
-        }
-      })
-    );
+    ['pointerup','pointercancel'].forEach(ev => cv.addEventListener(ev, e => {
+      SIM.ptrs.delete(e.pointerId);
+      SIM.activeHandle = -1;
+      if (SIM.ptrs.size === 0) { SIM.draggingQuad = false; SIM.dragRef = null; SIM.lastPinchCorners = null; }
+    }));
 
-    // ── Scroll para escalar (desktop)
-    canvas.addEventListener('wheel', e => {
+    cv.addEventListener('wheel', e => {
       e.preventDefault();
-      SIM.scale *= e.deltaY < 0 ? 1.08 : 0.93;
-      SIM.scale  = Math.max(0.05, Math.min(SIM.scale, 10));
+      if (!SIM.corners) return;
+      const s = e.deltaY < 0 ? 1.06 : 0.94;
+      const cx = SIM.corners.reduce((a,c)=>a+c.x,0)/4;
+      const cy = SIM.corners.reduce((a,c)=>a+c.y,0)/4;
+      SIM.corners = SIM.corners.map(c=>({ x: cx+(c.x-cx)*s, y: cy+(c.y-cy)*s }));
       simRedraw();
     }, { passive: false });
-  }
-
-  function ptDist(a, b) {
-    return Math.hypot(a.x - b.x, a.y - b.y);
-  }
-  function ptAngle(a, b) {
-    return Math.atan2(b.y - a.y, b.x - a.x);
   }
 
   function simLoadRoom(e) {
@@ -827,10 +935,8 @@
     const canvas = document.getElementById('sim-canvas');
     canvas.toBlob(blob => {
       const url = URL.createObjectURL(blob);
-      const a   = document.createElement('a');
-      a.href     = url;
-      a.download = 'simulacao-tapete.png';
-      a.click();
+      const a = document.createElement('a');
+      a.href = url; a.download = 'simulacao-tapete.png'; a.click();
       setTimeout(() => URL.revokeObjectURL(url), 5000);
     }, 'image/png');
   }
@@ -841,15 +947,11 @@
       const file = new File([blob], 'tapete-simulacao.png', { type: 'image/png' });
       if (navigator.canShare?.({ files: [file] })) {
         try {
-          await navigator.share({
-            files: [file],
-            title: document.title,
-            text: 'Veja como esse tapete ficaria no meu ambiente!'
-          });
+          await navigator.share({ files: [file], title: document.title, text: 'Veja como esse tapete ficaria no meu ambiente!' });
           return;
         } catch {}
       }
-      simSave(); // fallback: download
+      simSave();
     }, 'image/png');
   }
 </script>
