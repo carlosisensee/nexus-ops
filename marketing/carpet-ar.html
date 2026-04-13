@@ -258,6 +258,159 @@
       border-top: 1px solid #f3f4f5;
     }
     footer a { color: var(--brand); text-decoration: none; font-weight: 600; }
+
+    /* ── Simulation overlay ───────────────────────────────────── */
+    .sim-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 200;
+      background: #0a0a0a;
+      display: none;
+      flex-direction: column;
+    }
+    .sim-overlay.open { display: flex; }
+
+    .sim-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 16px;
+      background: rgba(0,0,0,.75);
+      backdrop-filter: blur(8px);
+      flex-shrink: 0;
+    }
+    .sim-header-title {
+      font-family: 'Manrope', sans-serif;
+      font-size: .95rem;
+      font-weight: 700;
+      color: #fff;
+    }
+    .sim-header-sub {
+      font-size: .7rem;
+      color: #9ca3af;
+      margin-top: 1px;
+    }
+    .sim-close-btn {
+      width: 34px; height: 34px;
+      border-radius: 50%;
+      background: rgba(255,255,255,.12);
+      border: none;
+      color: #fff;
+      font-size: 1.1rem;
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .sim-canvas-wrap {
+      flex: 1;
+      position: relative;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    #sim-canvas {
+      display: block;
+      max-width: 100%;
+      max-height: 100%;
+      touch-action: none;
+      cursor: grab;
+    }
+    #sim-canvas:active { cursor: grabbing; }
+
+    .sim-placeholder {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 14px;
+      pointer-events: none;
+    }
+    .sim-placeholder.hidden { display: none; }
+    .sim-placeholder-icon { font-size: 3rem; }
+    .sim-placeholder-text {
+      font-size: .85rem;
+      color: #6b7280;
+      text-align: center;
+      line-height: 1.5;
+      max-width: 220px;
+    }
+    .sim-upload-btn {
+      pointer-events: auto;
+      padding: 11px 24px;
+      background: var(--brand);
+      color: #fff;
+      border: none;
+      border-radius: 999px;
+      font-weight: 700;
+      font-size: .85rem;
+      cursor: pointer;
+      display: flex; align-items: center; gap: 8px;
+    }
+
+    .sim-controls {
+      flex-shrink: 0;
+      background: rgba(10,10,10,.92);
+      backdrop-filter: blur(12px);
+      padding: 12px 16px 20px;
+      display: none;
+    }
+    .sim-controls.visible { display: block; }
+
+    .sim-ctrl-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 6px;
+    }
+    .sim-ctrl-label {
+      font-size: .7rem;
+      font-weight: 600;
+      color: #9ca3af;
+      width: 58px;
+      flex-shrink: 0;
+      text-transform: uppercase;
+      letter-spacing: .04em;
+    }
+    .sim-ctrl-row input[type=range] {
+      flex: 1;
+      height: 4px;
+      accent-color: #4f83f0;
+      cursor: pointer;
+    }
+    .sim-ctrl-value {
+      font-size: .72rem;
+      color: #d1d5db;
+      width: 36px;
+      text-align: right;
+    }
+
+    .sim-btn-row {
+      display: flex;
+      gap: 8px;
+      margin-top: 10px;
+    }
+    .sim-action-btn {
+      flex: 1;
+      padding: 11px 8px;
+      border-radius: 10px;
+      border: none;
+      font-size: .8rem;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      transition: opacity .15s;
+    }
+    .sim-action-btn:hover { opacity: .85; }
+    .sim-save-btn  { background: var(--brand); color: #fff; }
+    .sim-share-btn { background: #1d4ed8; color: #fff; }
+    .sim-change-btn { background: #374151; color: #e5e7eb; }
   </style>
 </head>
 <body>
@@ -325,6 +478,12 @@
         </button>
       </div>
 
+      <!-- Simulação em foto -->
+      <button class="btn-secondary" id="btn-sim" onclick="openSim()" style="width:100%;margin-top:10px;gap:8px;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+        Simular em foto do ambiente
+      </button>
+
       <div class="hint">
         <strong>Como usar o AR:</strong> Toque em <strong>"Ver no meu ambiente"</strong> e aponte a câmera para o chão. O tapete aparecerá em escala real — mova e gire com os dedos para posicioná-lo. Para melhor resultado, aponte primeiro para uma área do chão sem móveis.
       </div>
@@ -339,6 +498,63 @@
     </div>
   </div>
 </main>
+
+<!-- ── Simulation overlay ───────────────────────────────────────────── -->
+<div class="sim-overlay" id="sim-overlay">
+  <div class="sim-header">
+    <div>
+      <p class="sim-header-title">Simular em foto</p>
+      <p class="sim-header-sub">Arraste o tapete • Pinça para escalar/girar</p>
+    </div>
+    <button class="sim-close-btn" onclick="closeSim()">✕</button>
+  </div>
+
+  <div class="sim-canvas-wrap">
+    <canvas id="sim-canvas"></canvas>
+    <div class="sim-placeholder" id="sim-placeholder">
+      <span class="sim-placeholder-icon">🛋️</span>
+      <p class="sim-placeholder-text">Tire ou escolha uma foto do seu ambiente para visualizar o tapete</p>
+      <button class="sim-upload-btn" onclick="document.getElementById('sim-file').click()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+        Escolher foto
+      </button>
+    </div>
+  </div>
+
+  <input type="file" id="sim-file" accept="image/*" style="display:none;" onchange="simLoadRoom(event)" />
+
+  <div class="sim-controls" id="sim-controls">
+    <div class="sim-ctrl-row">
+      <span class="sim-ctrl-label">Tamanho</span>
+      <input type="range" id="sim-scale" min="5" max="200" value="50" oninput="simRedraw(); document.getElementById('sim-scale-val').textContent=this.value+'%'" />
+      <span class="sim-ctrl-value" id="sim-scale-val">50%</span>
+    </div>
+    <div class="sim-ctrl-row">
+      <span class="sim-ctrl-label">Rotação</span>
+      <input type="range" id="sim-rot" min="0" max="360" value="0" oninput="simRedraw(); document.getElementById('sim-rot-val').textContent=this.value+'°'" />
+      <span class="sim-ctrl-value" id="sim-rot-val">0°</span>
+    </div>
+    <div class="sim-ctrl-row">
+      <span class="sim-ctrl-label">Opacidade</span>
+      <input type="range" id="sim-opacity" min="20" max="100" value="100" oninput="simRedraw(); document.getElementById('sim-opacity-val').textContent=this.value+'%'" />
+      <span class="sim-ctrl-value" id="sim-opacity-val">100%</span>
+    </div>
+    <div class="sim-btn-row">
+      <button class="sim-action-btn sim-save-btn" onclick="simSave()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        Salvar foto
+      </button>
+      <button class="sim-action-btn sim-share-btn" onclick="simShare()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+        Compartilhar
+      </button>
+      <button class="sim-action-btn sim-change-btn" onclick="document.getElementById('sim-file').click()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+        Trocar foto
+      </button>
+    </div>
+  </div>
+</div>
 
 <footer>
   Powered by <a href="https://casaencanto.com.br">Casa Encanto</a> · Tecnologia WebAR
@@ -374,6 +590,8 @@
   }
 
   function renderModel(model) {
+    window._currentModel = model; // expõe para simulação em foto
+
     // model-viewer
     const mv = document.getElementById('mv');
     mv.src = model.glb_url;
@@ -427,17 +645,212 @@
   async function shareLink() {
     const url = location.href;
     if (navigator.share) {
-      try {
-        await navigator.share({ title: document.title, url });
-      } catch {}
+      try { await navigator.share({ title: document.title, url }); } catch {}
     } else {
-      try {
-        await navigator.clipboard.writeText(url);
-        alert('Link copiado!');
-      } catch {
-        alert('Link: ' + url);
-      }
+      try { await navigator.clipboard.writeText(url); alert('Link copiado!'); }
+      catch { alert('Link: ' + url); }
     }
+  }
+
+  // ── SIMULAÇÃO EM FOTO ─────────────────────────────────────────────────────
+  const SIM = {
+    roomImg:   null,   // HTMLImageElement — foto do ambiente
+    carpetImg: null,   // HTMLImageElement — textura do tapete
+    x: 0, y: 0,       // posição central do tapete no canvas
+    scale: 0.5,        // fator de escala (1 = largura total do canvas)
+    rot: 0,            // rotação em radianos
+    drag: false,
+    lastX: 0, lastY: 0,
+    ptrs: new Map(),   // pointerEvents ativos (para pinch)
+    lastPinchDist: 0,
+    lastPinchAngle: 0,
+  };
+
+  function openSim() {
+    document.getElementById('sim-overlay').classList.add('open');
+    // Carrega imagem do tapete uma única vez
+    if (!SIM.carpetImg && window._currentModel?.image_url) {
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.onload = () => { SIM.carpetImg = img; simRedraw(); };
+      img.src = window._currentModel.image_url;
+    }
+    setTimeout(simInitCanvas, 50);
+  }
+
+  function closeSim() {
+    document.getElementById('sim-overlay').classList.remove('open');
+  }
+
+  function simInitCanvas() {
+    const wrap   = document.querySelector('.sim-canvas-wrap');
+    const canvas = document.getElementById('sim-canvas');
+    canvas.width  = wrap.clientWidth  * window.devicePixelRatio;
+    canvas.height = wrap.clientHeight * window.devicePixelRatio;
+    canvas.style.width  = wrap.clientWidth  + 'px';
+    canvas.style.height = wrap.clientHeight + 'px';
+    SIM.x = canvas.width  / 2;
+    SIM.y = canvas.height / 2;
+    SIM.scale = (canvas.width * 0.45) / Math.max(SIM.carpetImg?.width || 400, 1);
+    simRedraw();
+    simBindEvents(canvas);
+  }
+
+  function simRedraw() {
+    const canvas = document.getElementById('sim-canvas');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // ── Foto do ambiente
+    if (SIM.roomImg) {
+      const r = Math.min(canvas.width / SIM.roomImg.width, canvas.height / SIM.roomImg.height);
+      const rw = SIM.roomImg.width * r, rh = SIM.roomImg.height * r;
+      const rx = (canvas.width - rw) / 2,  ry = (canvas.height - rh) / 2;
+      ctx.drawImage(SIM.roomImg, rx, ry, rw, rh);
+    }
+
+    // ── Tapete
+    if (SIM.carpetImg) {
+      // Lê sliders (UI → lógica)
+      const uiScale   = parseFloat(document.getElementById('sim-scale')?.value   || 50) / 100;
+      const uiRot     = parseFloat(document.getElementById('sim-rot')?.value     || 0) * Math.PI / 180;
+      const uiOpacity = parseFloat(document.getElementById('sim-opacity')?.value || 100) / 100;
+
+      const drawW = SIM.carpetImg.width  * SIM.scale * uiScale;
+      const drawH = SIM.carpetImg.height * SIM.scale * uiScale;
+
+      ctx.save();
+      ctx.translate(SIM.x, SIM.y);
+      ctx.rotate(SIM.rot + uiRot);
+      ctx.globalAlpha = uiOpacity;
+      ctx.drawImage(SIM.carpetImg, -drawW / 2, -drawH / 2, drawW, drawH);
+      ctx.restore();
+    }
+  }
+
+  function simBindEvents(canvas) {
+    // ── Pointer events (mouse + touch unificados)
+    canvas.addEventListener('pointerdown', e => {
+      SIM.ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      canvas.setPointerCapture(e.pointerId);
+      if (SIM.ptrs.size === 1) {
+        SIM.drag  = true;
+        SIM.lastX = e.clientX * window.devicePixelRatio;
+        SIM.lastY = e.clientY * window.devicePixelRatio;
+      }
+      if (SIM.ptrs.size === 2) {
+        const pts = [...SIM.ptrs.values()];
+        SIM.lastPinchDist  = ptDist(pts[0], pts[1]);
+        SIM.lastPinchAngle = ptAngle(pts[0], pts[1]);
+        SIM.drag = false;
+      }
+    });
+
+    canvas.addEventListener('pointermove', e => {
+      if (!SIM.ptrs.has(e.pointerId)) return;
+      SIM.ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY });
+
+      const dpr = window.devicePixelRatio;
+
+      if (SIM.ptrs.size === 1 && SIM.drag) {
+        const cx = e.clientX * dpr, cy = e.clientY * dpr;
+        SIM.x += cx - SIM.lastX;
+        SIM.y += cy - SIM.lastY;
+        SIM.lastX = cx; SIM.lastY = cy;
+        simRedraw();
+      }
+
+      if (SIM.ptrs.size === 2) {
+        const pts = [...SIM.ptrs.values()];
+        const d = ptDist(pts[0], pts[1]);
+        const a = ptAngle(pts[0], pts[1]);
+
+        if (SIM.lastPinchDist > 0) {
+          SIM.scale *= d / SIM.lastPinchDist;
+          SIM.scale  = Math.max(0.05, Math.min(SIM.scale, 10));
+        }
+        SIM.rot += a - SIM.lastPinchAngle;
+        SIM.lastPinchDist  = d;
+        SIM.lastPinchAngle = a;
+        simRedraw();
+      }
+    });
+
+    ['pointerup','pointercancel'].forEach(ev =>
+      canvas.addEventListener(ev, e => {
+        SIM.ptrs.delete(e.pointerId);
+        if (SIM.ptrs.size === 0) SIM.drag = false;
+        if (SIM.ptrs.size === 1) {
+          const pt = [...SIM.ptrs.values()][0];
+          SIM.lastX = pt.x * window.devicePixelRatio;
+          SIM.lastY = pt.y * window.devicePixelRatio;
+          SIM.drag = true;
+        }
+      })
+    );
+
+    // ── Scroll para escalar (desktop)
+    canvas.addEventListener('wheel', e => {
+      e.preventDefault();
+      SIM.scale *= e.deltaY < 0 ? 1.08 : 0.93;
+      SIM.scale  = Math.max(0.05, Math.min(SIM.scale, 10));
+      simRedraw();
+    }, { passive: false });
+  }
+
+  function ptDist(a, b) {
+    return Math.hypot(a.x - b.x, a.y - b.y);
+  }
+  function ptAngle(a, b) {
+    return Math.atan2(b.y - a.y, b.x - a.x);
+  }
+
+  function simLoadRoom(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = ev => {
+      const img = new Image();
+      img.onload = () => {
+        SIM.roomImg = img;
+        document.getElementById('sim-placeholder').classList.add('hidden');
+        document.getElementById('sim-controls').classList.add('visible');
+        simInitCanvas();
+      };
+      img.src = ev.target.result;
+    };
+    reader.readAsDataURL(file);
+  }
+
+  function simSave() {
+    const canvas = document.getElementById('sim-canvas');
+    canvas.toBlob(blob => {
+      const url = URL.createObjectURL(blob);
+      const a   = document.createElement('a');
+      a.href     = url;
+      a.download = 'simulacao-tapete.png';
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(url), 5000);
+    }, 'image/png');
+  }
+
+  async function simShare() {
+    const canvas = document.getElementById('sim-canvas');
+    canvas.toBlob(async blob => {
+      const file = new File([blob], 'tapete-simulacao.png', { type: 'image/png' });
+      if (navigator.canShare?.({ files: [file] })) {
+        try {
+          await navigator.share({
+            files: [file],
+            title: document.title,
+            text: 'Veja como esse tapete ficaria no meu ambiente!'
+          });
+          return;
+        } catch {}
+      }
+      simSave(); // fallback: download
+    }, 'image/png');
   }
 </script>
 </body>

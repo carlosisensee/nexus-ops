@@ -897,7 +897,29 @@
           if (y < H - 1) stack.push(px + W);
         }
 
-        // Suavização leve das bordas (1px anti-alias)
+        // Erosão pós-flood-fill: remove franja branca (pixels de borda que
+        // misturaram fundo+tapete e ficaram fora da tolerância original).
+        // Aplica duas passadas com tolerância 2× para cobrir a franja JPEG.
+        for (let pass = 0; pass < 2; pass++) {
+          const snapshot = new Uint8Array(W * H); // cópia do alpha atual
+          for (let px = 0; px < W * H; px++) snapshot[px] = data[px*4+3];
+
+          for (let y = 1; y < H - 1; y++) {
+            for (let x = 1; x < W - 1; x++) {
+              const px = y * W + x;
+              if (snapshot[px] === 0) continue; // já transparente
+              // Tem vizinho (4-viz) transparente?
+              const hasTransNb =
+                snapshot[(y-1)*W+x] === 0 || snapshot[(y+1)*W+x] === 0 ||
+                snapshot[y*W+(x-1)] === 0  || snapshot[y*W+(x+1)] === 0;
+              if (hasTransNb && dist(px*4) <= tolerance * 2.2) {
+                data[px*4+3] = 0;
+              }
+            }
+          }
+        }
+
+        // Anti-alias leve na borda final (1px de transição suave)
         for (let y = 1; y < H - 1; y++) {
           for (let x = 1; x < W - 1; x++) {
             const i = (y * W + x) * 4;
@@ -907,7 +929,7 @@
                 (y*W+(x-1))*4, (y*W+(x+1))*4,
               ];
               const t = nb.filter(ni => data[ni+3] === 0).length;
-              if (t > 0) data[i+3] = Math.round(255 * (1 - t * 0.25));
+              if (t > 0) data[i+3] = Math.round(255 * (1 - t * 0.2));
             }
           }
         }

@@ -28,6 +28,21 @@ const VALID_SHAPES   = new Set(['rectangular', 'oval', 'round']);
 const VALID_STATUSES = new Set(['pending', 'processing', 'ready', 'error']);
 const MAX_PAYLOAD_B  = 12 * 1024 * 1024; // 12 MB base64
 
+// Origens permitidas para o endpoint público by-sku (site do cliente)
+// Aceita qualquer origem se NEXUS_WIDGET_ORIGINS não for definida.
+function buildCorsPublic(origin) {
+  const extra = (process.env.NEXUS_WIDGET_ORIGINS || '').split(',').map(s => s.trim()).filter(Boolean);
+  return {
+    'Access-Control-Allow-Origin':  origin || '*',
+    'Access-Control-Allow-Headers': 'Content-Type',
+    'Access-Control-Allow-Methods': 'GET, OPTIONS',
+    'Access-Control-Max-Age':       '86400',
+    'Content-Type':                 'application/json',
+    'X-Content-Type-Options':       'nosniff',
+    'Cache-Control':                'public, max-age=300', // 5 min cache no CDN
+  };
+}
+
 // ── CORS ─────────────────────────────────────────────────────────────────────
 function buildCors(origin) {
   const allowed = process.env.NEXUS_ALLOWED_ORIGIN || '';
@@ -81,6 +96,41 @@ exports.handler = async function (event) {
     } catch (e) {
       console.error('[carpet-api] list error:', e.message);
       return err(cors, 500, 'Erro ao listar modelos.');
+    }
+  }
+
+  // ── GET by-sku ─────────────────────────────────────────────
+  // Endpoint PÚBLICO — chamado pelo script do site do cliente via dataLayer.
+  // Retorna o modelo 3D ready mais recente para um determinado sku_base.
+  // Suporta: ?action=by-sku&sku=XXXX  ou  &sku_base=XXXX
+  if (action === 'by-sku' && method === 'GET') {
+    const pubCors = buildCorsPublic(event.headers['origin'] || '');
+    if (event.httpMethod === 'OPTIONS') return { statusCode: 204, headers: pubCors, body: '' };
+
+    const sku = (event.queryStringParameters?.sku || event.queryStringParameters?.sku_base || '').trim();
+    if (!sku) return { statusCode: 400, headers: pubCors, body: JSON.stringify({ error: 'sku obrigatório' }) };
+
+    try {
+      const supabase = getSupabaseClient();
+      const { data: models, error: e } = await supabase
+        .from('carpet_models')
+        .select('id, name, sku_base, shape, glb_url, image_url, status')
+        .eq('sku_base', sku)
+        .eq('status', 'ready')
+        .order('created_at', { ascending: false })
+        .limit(1);
+      if (e) throw e;
+
+      if (!models || models.length === 0) {
+        return { statusCode: 404, headers: pubCors, body: JSON.stringify({ found: false }) };
+      }
+
+      const model = models[0];
+      const arUrl = `https://nexus-ops-hub.netlify.app/marketing/carpet-ar.html?id=${model.id}`;
+      return { statusCode: 200, headers: pubCors, body: JSON.stringify({ found: true, model, ar_url: arUrl }) };
+    } catch (e) {
+      console.error('[carpet-api] by-sku error:', e.message);
+      return { statusCode: 500, headers: buildCorsPublic(event.headers['origin'] || ''), body: JSON.stringify({ error: 'Erro interno' }) };
     }
   }
 
