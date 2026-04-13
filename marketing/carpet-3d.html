@@ -1,0 +1,951 @@
+<!DOCTYPE html>
+<html lang="pt-BR" class="light">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Nexus Ops — Tapetes 3D WebAR</title>
+
+  <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet" />
+
+  <!-- Three.js + GLTFExporter (module) -->
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.162.0/build/three.module.js",
+      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.162.0/examples/jsm/"
+    }
+  }
+  </script>
+
+  <!-- model-viewer para WebAR nativo (Android Scene Viewer + iOS Quick Look) -->
+  <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.4.0/model-viewer.min.js"></script>
+
+  <script id="tw-config">
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            'surface':                   '#f8f9fa',
+            'surface-container-lowest':  '#ffffff',
+            'surface-container-low':     '#f3f4f5',
+            'surface-container':         '#edeeef',
+            'surface-container-high':    '#e7e8e9',
+            'on-surface':                '#191c1d',
+            'on-surface-variant':        '#434653',
+            'outline-variant':           '#c3c6d5',
+            'primary':                   '#00327d',
+            'on-primary':                '#ffffff',
+            'secondary':                 '#1b6d24',
+            'tertiary':                  '#651f00',
+            'error':                     '#ba1a1a',
+          },
+          fontFamily: {
+            headline: ['Manrope', 'sans-serif'],
+            body:     ['Inter', 'sans-serif'],
+            label:    ['Inter', 'sans-serif'],
+          },
+        },
+      },
+    };
+  </script>
+
+  <style>
+    body { font-family: 'Inter', sans-serif; background: #f8f9fa; color: #191c1d; }
+    .material-symbols-outlined { font-variation-settings: 'FILL' 0,'wght' 300,'GRAD' 0,'opsz' 24; vertical-align: middle; }
+
+    /* Status badges */
+    .badge-ready      { background:#dcfce7; color:#166534; }
+    .badge-processing { background:#fef9c3; color:#854d0e; }
+    .badge-pending    { background:#f1f5f9; color:#475569; }
+    .badge-error      { background:#fee2e2; color:#991b1b; }
+
+    /* Card hover */
+    .model-card { transition: box-shadow .15s; }
+    .model-card:hover { box-shadow: 0 4px 20px rgba(0,0,0,.08); }
+
+    /* model-viewer */
+    model-viewer {
+      width: 100%;
+      height: 260px;
+      border-radius: 0.75rem;
+      background: #f1f5f9;
+      --poster-color: #f1f5f9;
+    }
+    model-viewer::part(default-ar-button) {
+      bottom: 12px; right: 12px;
+    }
+
+    /* Image upload drop zone */
+    .dropzone { transition: background .15s, border-color .15s; }
+    .dropzone.drag-over { background: #eff6ff; border-color: #3b82f6; }
+
+    /* Modal backdrop */
+    .modal-backdrop { backdrop-filter: blur(4px); }
+
+    /* Overlay AR viewer */
+    #ar-overlay { display: none; }
+    #ar-overlay.open { display: flex; }
+  </style>
+</head>
+
+<body class="min-h-screen">
+<div id="nexus-main" class="p-6 max-w-7xl mx-auto">
+
+  <!-- ── Header ──────────────────────────────────────────────────────────── -->
+  <div class="flex items-start justify-between mb-6">
+    <div>
+      <p class="font-label text-xs text-on-surface-variant uppercase tracking-widest mb-1">Marketing · WebAR</p>
+      <h1 class="font-headline text-2xl font-700 text-on-surface">Tapetes 3D</h1>
+      <p class="font-body text-sm text-on-surface-variant mt-0.5">Gere modelos 3D a partir da foto flatlay e permita o cliente simular em casa via AR.</p>
+    </div>
+    <button id="btn-new-model" class="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-primary text-white font-label text-sm font-600 hover:bg-blue-800 transition-colors">
+      <span class="material-symbols-outlined text-[18px]">add</span>
+      Novo Modelo
+    </button>
+  </div>
+
+  <!-- ── Stats strip ──────────────────────────────────────────────────────── -->
+  <div class="grid grid-cols-3 gap-3 mb-6">
+    <div class="bg-surface-container-lowest rounded-xl p-4">
+      <p class="font-label text-xs text-on-surface-variant mb-1">Total de modelos</p>
+      <p class="font-headline text-2xl font-700 text-on-surface" id="stat-total">—</p>
+    </div>
+    <div class="bg-surface-container-lowest rounded-xl p-4">
+      <p class="font-label text-xs text-on-surface-variant mb-1">Prontos para AR</p>
+      <p class="font-headline text-2xl font-700 text-secondary" id="stat-ready">—</p>
+    </div>
+    <div class="bg-surface-container-lowest rounded-xl p-4">
+      <p class="font-label text-xs text-on-surface-variant mb-1">Aguardando 3D</p>
+      <p class="font-headline text-2xl font-700 text-on-surface-variant" id="stat-pending">—</p>
+    </div>
+  </div>
+
+  <!-- ── Grid de modelos ──────────────────────────────────────────────────── -->
+  <div id="models-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+    <!-- cards injetados por JS -->
+  </div>
+
+  <!-- Estado vazio -->
+  <div id="empty-state" class="hidden flex-col items-center justify-center py-20 text-center">
+    <span class="material-symbols-outlined text-[48px] text-on-surface-variant mb-3" style="font-variation-settings:'FILL' 0,'wght' 200,'GRAD' 0,'opsz' 48;">view_in_ar</span>
+    <p class="font-headline text-lg font-600 text-on-surface mb-1">Nenhum modelo ainda</p>
+    <p class="font-body text-sm text-on-surface-variant mb-4">Cadastre o primeiro tapete para gerar o modelo 3D e ativar o WebAR.</p>
+    <button onclick="openNewModelModal()" class="px-4 py-2 rounded-lg bg-primary text-white font-label text-sm font-600">Adicionar modelo</button>
+  </div>
+
+  <!-- Loader -->
+  <div id="page-loader" class="flex flex-col items-center justify-center py-20">
+    <div class="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin mb-3"></div>
+    <p class="font-body text-sm text-on-surface-variant">Carregando modelos…</p>
+  </div>
+
+</div><!-- /nexus-main -->
+
+<!-- ═══════════════════════════════════════════════════════════════════════════
+     MODAL — Novo Modelo
+     ═══════════════════════════════════════════════════════════════════════ -->
+<div id="modal-new-model" class="fixed inset-0 z-50 hidden items-center justify-center modal-backdrop bg-black/30">
+  <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 p-6">
+    <div class="flex items-center justify-between mb-5">
+      <h2 class="font-headline text-lg font-700 text-on-surface">Novo Modelo</h2>
+      <button onclick="closeModal('modal-new-model')" class="text-on-surface-variant hover:text-on-surface">
+        <span class="material-symbols-outlined">close</span>
+      </button>
+    </div>
+
+    <form id="form-new-model" onsubmit="submitNewModel(event)">
+      <!-- Nome -->
+      <div class="mb-4">
+        <label class="font-label text-xs font-600 text-on-surface-variant uppercase tracking-wide block mb-1.5">Nome do modelo</label>
+        <input type="text" id="inp-name" placeholder="ex: Flourish 01" required
+          class="w-full px-3 py-2.5 rounded-lg bg-surface-container text-on-surface font-body text-sm outline-none focus:ring-2 focus:ring-primary/30 border-0">
+      </div>
+
+      <!-- SKU base -->
+      <div class="mb-4">
+        <label class="font-label text-xs font-600 text-on-surface-variant uppercase tracking-wide block mb-1.5">SKU Base</label>
+        <input type="text" id="inp-sku" placeholder="ex: FLR01" required
+          class="w-full px-3 py-2.5 rounded-lg bg-surface-container text-on-surface font-body text-sm outline-none focus:ring-2 focus:ring-primary/30 border-0">
+      </div>
+
+      <!-- Formato -->
+      <div class="mb-5">
+        <label class="font-label text-xs font-600 text-on-surface-variant uppercase tracking-wide block mb-1.5">Formato</label>
+        <div class="flex gap-2">
+          <label class="flex-1">
+            <input type="radio" name="shape" value="rectangular" checked class="sr-only peer">
+            <div class="peer-checked:bg-primary peer-checked:text-white bg-surface-container text-on-surface-variant rounded-lg px-3 py-2 text-center font-label text-xs font-500 cursor-pointer transition-colors">Retangular</div>
+          </label>
+          <label class="flex-1">
+            <input type="radio" name="shape" value="oval" class="sr-only peer">
+            <div class="peer-checked:bg-primary peer-checked:text-white bg-surface-container text-on-surface-variant rounded-lg px-3 py-2 text-center font-label text-xs font-500 cursor-pointer transition-colors">Oval</div>
+          </label>
+          <label class="flex-1">
+            <input type="radio" name="shape" value="round" class="sr-only peer">
+            <div class="peer-checked:bg-primary peer-checked:text-white bg-surface-container text-on-surface-variant rounded-lg px-3 py-2 text-center font-label text-xs font-500 cursor-pointer transition-colors">Redondo</div>
+          </label>
+        </div>
+      </div>
+
+      <button type="submit" id="btn-submit-model"
+        class="w-full py-2.5 rounded-lg bg-primary text-white font-label text-sm font-600 hover:bg-blue-800 transition-colors flex items-center justify-center gap-2">
+        <span class="material-symbols-outlined text-[18px]">add_circle</span>
+        Criar Modelo
+      </button>
+    </form>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════════════
+     MODAL — Adicionar Tamanho
+     ═══════════════════════════════════════════════════════════════════════ -->
+<div id="modal-add-size" class="fixed inset-0 z-50 hidden items-center justify-center modal-backdrop bg-black/30">
+  <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm mx-4 p-6">
+    <div class="flex items-center justify-between mb-5">
+      <h2 class="font-headline text-lg font-700 text-on-surface">Adicionar Tamanho</h2>
+      <button onclick="closeModal('modal-add-size')" class="text-on-surface-variant hover:text-on-surface">
+        <span class="material-symbols-outlined">close</span>
+      </button>
+    </div>
+
+    <form id="form-add-size" onsubmit="submitAddSize(event)">
+      <input type="hidden" id="size-model-id" />
+
+      <div class="mb-4">
+        <label class="font-label text-xs font-600 text-on-surface-variant uppercase tracking-wide block mb-1.5">Nome do tamanho</label>
+        <input type="text" id="inp-size-name" placeholder="ex: 150x200, 300x400" required
+          class="w-full px-3 py-2.5 rounded-lg bg-surface-container text-on-surface font-body text-sm outline-none focus:ring-2 focus:ring-primary/30 border-0">
+      </div>
+
+      <div class="grid grid-cols-2 gap-3 mb-5">
+        <div>
+          <label class="font-label text-xs font-600 text-on-surface-variant uppercase tracking-wide block mb-1.5">Largura (cm)</label>
+          <input type="number" id="inp-width" placeholder="150" min="1" max="999" required
+            class="w-full px-3 py-2.5 rounded-lg bg-surface-container text-on-surface font-body text-sm outline-none focus:ring-2 focus:ring-primary/30 border-0">
+        </div>
+        <div>
+          <label class="font-label text-xs font-600 text-on-surface-variant uppercase tracking-wide block mb-1.5">Altura (cm)</label>
+          <input type="number" id="inp-height" placeholder="200" min="1" max="999" required
+            class="w-full px-3 py-2.5 rounded-lg bg-surface-container text-on-surface font-body text-sm outline-none focus:ring-2 focus:ring-primary/30 border-0">
+        </div>
+      </div>
+
+      <button type="submit" class="w-full py-2.5 rounded-lg bg-primary text-white font-label text-sm font-600 hover:bg-blue-800 transition-colors">
+        Adicionar
+      </button>
+    </form>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════════════
+     OVERLAY — Upload de Imagem + Geração 3D
+     ═══════════════════════════════════════════════════════════════════════ -->
+<div id="modal-generate" class="fixed inset-0 z-50 hidden items-center justify-center modal-backdrop bg-black/30">
+  <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg mx-4 p-6 max-h-[90vh] overflow-y-auto">
+    <div class="flex items-center justify-between mb-5">
+      <div>
+        <h2 class="font-headline text-lg font-700 text-on-surface">Gerar Modelo 3D</h2>
+        <p class="font-body text-xs text-on-surface-variant" id="gen-model-name">—</p>
+      </div>
+      <button onclick="closeModal('modal-generate')" class="text-on-surface-variant hover:text-on-surface">
+        <span class="material-symbols-outlined">close</span>
+      </button>
+    </div>
+
+    <input type="hidden" id="gen-model-id" />
+    <input type="hidden" id="gen-model-sizes-json" />
+
+    <!-- Upload -->
+    <div id="gen-upload-area">
+      <div id="dropzone"
+        class="dropzone border-2 border-dashed border-outline-variant rounded-xl p-6 text-center cursor-pointer mb-4 hover:bg-surface-container transition-colors"
+        onclick="document.getElementById('file-input').click()"
+        ondragover="handleDragOver(event)"
+        ondragleave="handleDragLeave(event)"
+        ondrop="handleDrop(event)">
+        <span class="material-symbols-outlined text-[36px] text-on-surface-variant mb-2 block" style="font-variation-settings:'FILL' 0,'wght' 200,'GRAD' 0,'opsz' 48;">image</span>
+        <p class="font-label text-sm font-600 text-on-surface mb-0.5">Arraste a foto flatlay aqui</p>
+        <p class="font-body text-xs text-on-surface-variant">ou clique para selecionar · JPG, PNG, WebP · máx 10 MB</p>
+      </div>
+      <input type="file" id="file-input" accept="image/jpeg,image/png,image/webp" class="hidden" onchange="handleFileSelect(event)" />
+
+      <!-- Preview da imagem selecionada -->
+      <div id="image-preview-wrap" class="hidden mb-4">
+        <img id="image-preview" class="w-full max-h-48 object-contain rounded-xl bg-surface-container" />
+        <p class="font-label text-xs text-on-surface-variant mt-1.5 text-center" id="image-preview-name"></p>
+      </div>
+
+      <!-- Seleção de tamanho para dimensões do modelo 3D -->
+      <div id="size-selector-wrap" class="hidden mb-4">
+        <label class="font-label text-xs font-600 text-on-surface-variant uppercase tracking-wide block mb-1.5">
+          Tamanho de referência para o modelo 3D
+        </label>
+        <select id="size-selector" class="w-full px-3 py-2.5 rounded-lg bg-surface-container text-on-surface font-body text-sm outline-none focus:ring-2 focus:ring-primary/30 border-0">
+        </select>
+        <p class="font-body text-xs text-on-surface-variant mt-1">As dimensões do modelo 3D correspondem ao tamanho selecionado para escala real no AR.</p>
+      </div>
+
+      <button id="btn-generate" onclick="startGeneration()" disabled
+        class="w-full py-2.5 rounded-lg bg-primary text-white font-label text-sm font-600 hover:bg-blue-800 transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2">
+        <span class="material-symbols-outlined text-[18px]">view_in_ar</span>
+        Gerar Modelo 3D
+      </button>
+    </div>
+
+    <!-- Progress -->
+    <div id="gen-progress" class="hidden">
+      <div class="flex flex-col items-center py-6">
+        <div class="w-12 h-12 border-2 border-primary border-t-transparent rounded-full animate-spin mb-4"></div>
+        <p class="font-label text-sm font-600 text-on-surface mb-1" id="gen-progress-label">Processando imagem…</p>
+        <p class="font-body text-xs text-on-surface-variant">Isso pode levar alguns segundos</p>
+        <div class="w-full bg-surface-container rounded-full h-1.5 mt-4">
+          <div id="gen-progress-bar" class="bg-primary h-1.5 rounded-full transition-all duration-300" style="width:0%"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Sucesso -->
+    <div id="gen-success" class="hidden">
+      <div class="flex flex-col items-center py-4 text-center">
+        <div class="w-12 h-12 rounded-full bg-green-100 flex items-center justify-center mb-3">
+          <span class="material-symbols-outlined text-[28px] text-green-700" style="font-variation-settings:'FILL' 1,'wght' 400,'GRAD' 0,'opsz' 24;">check_circle</span>
+        </div>
+        <p class="font-headline text-base font-700 text-on-surface mb-1">Modelo 3D gerado!</p>
+        <p class="font-body text-xs text-on-surface-variant mb-4">O modelo está pronto para visualização e WebAR.</p>
+        <button onclick="closeModal('modal-generate'); loadModels();"
+          class="px-5 py-2 rounded-lg bg-primary text-white font-label text-sm font-600">
+          Ver modelos
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════════════
+     OVERLAY — Visualizador 3D + AR
+     ═══════════════════════════════════════════════════════════════════════ -->
+<div id="ar-overlay" class="fixed inset-0 z-60 items-center justify-center bg-black/70 modal-backdrop">
+  <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg mx-4 overflow-hidden">
+    <div class="flex items-center justify-between px-5 pt-5 pb-3">
+      <div>
+        <h2 class="font-headline text-base font-700 text-on-surface" id="ar-model-name">—</h2>
+        <p class="font-body text-xs text-on-surface-variant" id="ar-model-size">—</p>
+      </div>
+      <button onclick="closeArOverlay()" class="text-on-surface-variant hover:text-on-surface">
+        <span class="material-symbols-outlined">close</span>
+      </button>
+    </div>
+
+    <!-- model-viewer aqui dentro -->
+    <div class="px-5 pb-5">
+      <model-viewer id="the-model-viewer"
+        camera-controls
+        auto-rotate
+        ar
+        ar-modes="scene-viewer quick-look webxr"
+        ar-scale="fixed"
+        shadow-intensity="1"
+        shadow-softness="0.5"
+        exposure="1"
+        style="width:100%;height:340px;border-radius:0.75rem;">
+        <button slot="ar-button"
+          class="absolute bottom-3 right-3 flex items-center gap-1.5 px-4 py-2 rounded-full bg-primary text-white font-label text-xs font-600 shadow-lg">
+          <span class="material-symbols-outlined text-[16px]" style="font-variation-settings:'FILL' 1,'wght' 400,'GRAD' 0,'opsz' 16;">view_in_ar</span>
+          Ver em AR
+        </button>
+      </model-viewer>
+
+      <div class="mt-3 p-3 rounded-xl bg-surface-container">
+        <p class="font-label text-xs font-600 text-on-surface-variant uppercase tracking-wide mb-1">Como usar o AR</p>
+        <p class="font-body text-xs text-on-surface-variant">Toque em <strong>"Ver em AR"</strong> para abrir a câmera. Aponte para o chão e o tapete aparecerá em escala real no ambiente.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════════════
+     Canvas oculto para processamento da imagem (Three.js)
+     ═══════════════════════════════════════════════════════════════════════ -->
+<canvas id="processing-canvas" class="hidden"></canvas>
+
+<!-- ── Scripts ──────────────────────────────────────────────────────────── -->
+<script>
+  window.NEXUS_BASE = '../';
+  window.NEXUS_PAGE = { module: 'marketing' };
+</script>
+<script src="../core/nexus-shell.js"></script>
+
+<script type="module">
+  import * as THREE from 'three';
+  import { GLTFExporter } from 'three/addons/exporters/GLTFExporter.js';
+
+  // Expõe para os handlers inline
+  window._THREE        = THREE;
+  window._GLTFExporter = GLTFExporter;
+</script>
+
+<script>
+  // ── CONFIG ────────────────────────────────────────────────────────────────
+  const API = '/.netlify/functions/carpet-api';
+
+  // ── STATE ─────────────────────────────────────────────────────────────────
+  let models         = [];
+  let selectedFile   = null;
+  let selectedMime   = null;
+
+  // ── INIT ──────────────────────────────────────────────────────────────────
+  document.addEventListener('DOMContentLoaded', loadModels);
+  document.getElementById('btn-new-model').addEventListener('click', openNewModelModal);
+
+  // ── LOAD MODELS ──────────────────────────────────────────────────────────
+  async function loadModels() {
+    document.getElementById('page-loader').classList.remove('hidden');
+    document.getElementById('models-grid').innerHTML = '';
+    document.getElementById('empty-state').classList.add('hidden');
+
+    try {
+      const res  = await fetch(`${API}?action=list`);
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Erro ao carregar.');
+
+      models = data;
+      renderModels();
+    } catch (e) {
+      showToast('Erro ao carregar modelos: ' + e.message, 'error');
+    } finally {
+      document.getElementById('page-loader').classList.add('hidden');
+    }
+  }
+
+  // ── RENDER MODELS ─────────────────────────────────────────────────────────
+  function renderModels() {
+    const grid = document.getElementById('models-grid');
+    grid.innerHTML = '';
+
+    updateStats();
+
+    if (!models.length) {
+      document.getElementById('empty-state').classList.remove('hidden');
+      document.getElementById('empty-state').classList.add('flex');
+      return;
+    }
+
+    models.forEach(m => grid.insertAdjacentHTML('beforeend', cardHtml(m)));
+  }
+
+  function updateStats() {
+    document.getElementById('stat-total').textContent   = models.length;
+    document.getElementById('stat-ready').textContent   = models.filter(m => m.status === 'ready').length;
+    document.getElementById('stat-pending').textContent = models.filter(m => m.status !== 'ready').length;
+  }
+
+  function cardHtml(m) {
+    const statusBadge = {
+      ready:      '<span class="badge-ready   font-label text-[10px] font-600 px-2 py-0.5 rounded-full">ready</span>',
+      processing: '<span class="badge-processing font-label text-[10px] font-600 px-2 py-0.5 rounded-full">processando…</span>',
+      pending:    '<span class="badge-pending  font-label text-[10px] font-600 px-2 py-0.5 rounded-full">pendente</span>',
+      error:      '<span class="badge-error    font-label text-[10px] font-600 px-2 py-0.5 rounded-full">erro</span>',
+    }[m.status] || '';
+
+    const imageArea = m.image_url
+      ? `<img src="${escHtml(m.image_url)}" class="w-full h-44 object-cover rounded-t-xl" />`
+      : `<div class="w-full h-44 bg-surface-container rounded-t-xl flex items-center justify-center">
+           <span class="material-symbols-outlined text-[40px] text-on-surface-variant" style="font-variation-settings:'FILL' 0,'wght' 200,'GRAD' 0,'opsz' 48;">image</span>
+         </div>`;
+
+    const sizesHtml = m.sizes.length
+      ? m.sizes.map(s => `
+          <span class="inline-flex items-center gap-1 bg-surface-container rounded-full px-2.5 py-1 font-label text-[11px] text-on-surface-variant">
+            ${escHtml(s.size_name)}: ${s.width_cm}×${s.height_cm}cm
+            <button onclick="deleteSize('${s.id}','${m.id}')" class="hover:text-error transition-colors ml-0.5">
+              <span class="material-symbols-outlined text-[12px]">close</span>
+            </button>
+          </span>`).join('')
+      : '<p class="font-body text-xs text-on-surface-variant italic">Nenhum tamanho cadastrado</p>';
+
+    const arBtn = m.status === 'ready' && m.glb_url
+      ? `<button onclick="openAr('${m.id}')" title="Visualizar / AR"
+           class="w-8 h-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center hover:bg-primary/20 transition-colors">
+           <span class="material-symbols-outlined text-[16px]">view_in_ar</span>
+         </button>`
+      : `<button disabled title="Gere o 3D primeiro"
+           class="w-8 h-8 rounded-lg bg-surface-container text-on-surface-variant flex items-center justify-center opacity-40 cursor-not-allowed">
+           <span class="material-symbols-outlined text-[16px]">view_in_ar</span>
+         </button>`;
+
+    return `
+      <div class="model-card bg-surface-container-lowest rounded-xl overflow-hidden" id="card-${m.id}">
+        <!-- thumbnail -->
+        <div class="relative">
+          ${imageArea}
+          <div class="absolute top-2 left-2 flex gap-1.5">
+            <span class="bg-black/60 text-white font-label text-[10px] font-600 px-2 py-0.5 rounded-full backdrop-blur-sm">3D</span>
+            ${m.shape === 'oval' ? '<span class="bg-black/60 text-white font-label text-[10px] font-600 px-2 py-0.5 rounded-full backdrop-blur-sm">Oval</span>' :
+              m.shape === 'round' ? '<span class="bg-black/60 text-white font-label text-[10px] font-600 px-2 py-0.5 rounded-full backdrop-blur-sm">Redondo</span>' : ''}
+          </div>
+          <div class="absolute top-2 right-2">${statusBadge}</div>
+        </div>
+
+        <!-- info -->
+        <div class="p-4">
+          <p class="font-headline text-sm font-700 text-on-surface mb-0.5">${escHtml(m.name)}</p>
+          <p class="font-body text-xs text-on-surface-variant mb-3">SKU base: ${escHtml(m.sku_base)}</p>
+
+          <!-- tamanhos -->
+          <p class="font-label text-[10px] font-600 text-on-surface-variant uppercase tracking-wide mb-1.5">
+            ${m.sizes.length} tamanho${m.sizes.length !== 1 ? 's' : ''} · ${m.shape === 'rectangular' ? 'retangular' : m.shape}
+          </p>
+          <div class="flex flex-wrap gap-1.5 mb-3 min-h-[24px]">
+            ${sizesHtml}
+          </div>
+
+          <!-- actions -->
+          <div class="flex items-center gap-2">
+            <button onclick="openGenerate('${m.id}')"
+              class="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg ${m.status === 'ready' ? 'bg-surface-container text-on-surface-variant' : 'bg-primary text-white'} font-label text-xs font-600 hover:opacity-80 transition-opacity">
+              <span class="material-symbols-outlined text-[14px]">${m.status === 'ready' ? 'refresh' : 'auto_awesome'}</span>
+              ${m.status === 'ready' ? 'Regerar 3D' : 'Gerar 3D'}
+            </button>
+            <button onclick="openAddSize('${m.id}')" title="Adicionar tamanho"
+              class="w-8 h-8 rounded-lg bg-surface-container text-on-surface-variant flex items-center justify-center hover:bg-surface-container-high transition-colors">
+              <span class="material-symbols-outlined text-[16px]">straighten</span>
+            </button>
+            ${arBtn}
+            <button onclick="copyArLink('${m.id}')" title="Copiar link AR"
+              class="w-8 h-8 rounded-lg bg-surface-container text-on-surface-variant flex items-center justify-center hover:bg-surface-container-high transition-colors">
+              <span class="material-symbols-outlined text-[16px]">link</span>
+            </button>
+            <button onclick="deleteModel('${m.id}')" title="Excluir modelo"
+              class="w-8 h-8 rounded-lg bg-error/10 text-error flex items-center justify-center hover:bg-error/20 transition-colors">
+              <span class="material-symbols-outlined text-[16px]">delete</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  // ── NEW MODEL ─────────────────────────────────────────────────────────────
+  function openNewModelModal() {
+    document.getElementById('form-new-model').reset();
+    openModal('modal-new-model');
+  }
+
+  async function submitNewModel(e) {
+    e.preventDefault();
+    const btn = document.getElementById('btn-submit-model');
+    btn.disabled = true;
+    btn.innerHTML = '<div class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>';
+
+    const name     = document.getElementById('inp-name').value.trim();
+    const sku_base = document.getElementById('inp-sku').value.trim();
+    const shape    = document.querySelector('input[name="shape"]:checked')?.value || 'rectangular';
+
+    try {
+      const res  = await fetch(`${API}?action=create`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, sku_base, shape }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+
+      models.unshift(data);
+      closeModal('modal-new-model');
+      renderModels();
+      showToast('Modelo criado! Agora adicione tamanhos e gere o 3D.', 'success');
+    } catch (e) {
+      showToast('Erro: ' + e.message, 'error');
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = '<span class="material-symbols-outlined text-[18px]">add_circle</span> Criar Modelo';
+    }
+  }
+
+  // ── ADD SIZE ──────────────────────────────────────────────────────────────
+  function openAddSize(modelId) {
+    document.getElementById('size-model-id').value = modelId;
+    document.getElementById('form-add-size').reset();
+    openModal('modal-add-size');
+  }
+
+  async function submitAddSize(e) {
+    e.preventDefault();
+    const model_id  = document.getElementById('size-model-id').value;
+    const size_name = document.getElementById('inp-size-name').value.trim();
+    const width_cm  = parseInt(document.getElementById('inp-width').value, 10);
+    const height_cm = parseInt(document.getElementById('inp-height').value, 10);
+
+    try {
+      const res  = await fetch(`${API}?action=add-size`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ model_id, size_name, width_cm, height_cm }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+
+      const m = models.find(x => x.id === model_id);
+      if (m) m.sizes.push(data);
+      closeModal('modal-add-size');
+      renderModels();
+      showToast('Tamanho adicionado.', 'success');
+    } catch (e) {
+      showToast('Erro: ' + e.message, 'error');
+    }
+  }
+
+  // ── DELETE SIZE ───────────────────────────────────────────────────────────
+  async function deleteSize(sizeId, modelId) {
+    if (!confirm('Remover este tamanho?')) return;
+    try {
+      const res = await fetch(`${API}?action=delete-size`, {
+        method: 'DELETE', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ size_id: sizeId }),
+      });
+      if (!res.ok) throw new Error((await res.json()).error);
+
+      const m = models.find(x => x.id === modelId);
+      if (m) m.sizes = m.sizes.filter(s => s.id !== sizeId);
+      renderModels();
+    } catch (e) {
+      showToast('Erro: ' + e.message, 'error');
+    }
+  }
+
+  // ── DELETE MODEL ──────────────────────────────────────────────────────────
+  async function deleteModel(modelId) {
+    const m = models.find(x => x.id === modelId);
+    if (!confirm(`Excluir modelo "${m?.name}"? Esta ação não pode ser desfeita.`)) return;
+
+    try {
+      const res = await fetch(`${API}?action=delete-model`, {
+        method: 'DELETE', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ model_id: modelId }),
+      });
+      if (!res.ok) throw new Error((await res.json()).error);
+
+      models = models.filter(x => x.id !== modelId);
+      renderModels();
+      showToast('Modelo excluído.', 'success');
+    } catch (e) {
+      showToast('Erro: ' + e.message, 'error');
+    }
+  }
+
+  // ── GENERATE 3D ───────────────────────────────────────────────────────────
+  function openGenerate(modelId) {
+    const m = models.find(x => x.id === modelId);
+    if (!m) return;
+
+    document.getElementById('gen-model-id').value   = modelId;
+    document.getElementById('gen-model-name').textContent = m.name + ' · ' + m.sku_base;
+    document.getElementById('gen-model-sizes-json').value = JSON.stringify(m.sizes);
+
+    // Reset UI
+    selectedFile = null; selectedMime = null;
+    document.getElementById('image-preview-wrap').classList.add('hidden');
+    document.getElementById('size-selector-wrap').classList.add('hidden');
+    document.getElementById('btn-generate').disabled = true;
+    document.getElementById('gen-upload-area').classList.remove('hidden');
+    document.getElementById('gen-progress').classList.add('hidden');
+    document.getElementById('gen-success').classList.add('hidden');
+
+    // Preenche seletor de tamanhos
+    const sel = document.getElementById('size-selector');
+    sel.innerHTML = '';
+    if (m.sizes.length) {
+      m.sizes.forEach(s => {
+        const opt = document.createElement('option');
+        opt.value = JSON.stringify({ w: s.width_cm, h: s.height_cm });
+        opt.textContent = `${s.size_name}: ${s.width_cm}×${s.height_cm} cm`;
+        sel.appendChild(opt);
+      });
+    } else {
+      const opt = document.createElement('option');
+      opt.value = JSON.stringify({ w: 150, h: 200 });
+      opt.textContent = 'Padrão: 150×200 cm (sem tamanho cadastrado)';
+      sel.appendChild(opt);
+    }
+
+    openModal('modal-generate');
+  }
+
+  // Drag & drop handlers
+  function handleDragOver(e) { e.preventDefault(); e.currentTarget.classList.add('drag-over'); }
+  function handleDragLeave(e) { e.currentTarget.classList.remove('drag-over'); }
+  function handleDrop(e) {
+    e.preventDefault();
+    e.currentTarget.classList.remove('drag-over');
+    const file = e.dataTransfer.files[0];
+    if (file) processFileSelection(file);
+  }
+  function handleFileSelect(e) {
+    const file = e.target.files[0];
+    if (file) processFileSelection(file);
+  }
+
+  function processFileSelection(file) {
+    const allowed = ['image/jpeg', 'image/png', 'image/webp'];
+    if (!allowed.includes(file.type)) { showToast('Tipo de arquivo não suportado.', 'error'); return; }
+    if (file.size > 10 * 1024 * 1024) { showToast('Arquivo muito grande (máx 10 MB).', 'error'); return; }
+
+    selectedFile = file;
+    selectedMime = file.type;
+
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      document.getElementById('image-preview').src = ev.target.result;
+      document.getElementById('image-preview-name').textContent = file.name;
+      document.getElementById('image-preview-wrap').classList.remove('hidden');
+      document.getElementById('size-selector-wrap').classList.remove('hidden');
+      document.getElementById('btn-generate').disabled = false;
+    };
+    reader.readAsDataURL(file);
+  }
+
+  async function startGeneration() {
+    if (!selectedFile) return;
+
+    const modelId   = document.getElementById('gen-model-id').value;
+    const sizeJson  = document.getElementById('size-selector').value;
+    const { w, h }  = JSON.parse(sizeJson);
+
+    document.getElementById('gen-upload-area').classList.add('hidden');
+    document.getElementById('gen-progress').classList.remove('hidden');
+
+    try {
+      // Step 1: resize image (max 2048px, JPEG Q80) → base64
+      setProgress(10, 'Comprimindo imagem…');
+      const { base64, mime } = await resizeImage(selectedFile, 2048, 0.82);
+
+      // Step 2: upload image to Supabase Storage
+      setProgress(30, 'Enviando imagem…');
+      const imgRes = await fetch(`${API}?action=upload-image`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ model_id: modelId, data: base64, mime_type: mime }),
+      });
+      const imgData = await imgRes.json();
+      if (!imgRes.ok) throw new Error(imgData.error);
+
+      // Step 3: generate GLB in browser
+      setProgress(55, 'Gerando modelo 3D…');
+      await setStatus(modelId, 'processing');
+      const glbBase64 = await generateGlb(imgData.image_url, w, h);
+
+      // Step 4: upload GLB
+      setProgress(80, 'Enviando modelo…');
+      const glbRes = await fetch(`${API}?action=upload-glb`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ model_id: modelId, data: glbBase64 }),
+      });
+      const glbData = await glbRes.json();
+      if (!glbRes.ok) throw new Error(glbData.error);
+
+      setProgress(100, 'Pronto!');
+      await new Promise(r => setTimeout(r, 400));
+
+      document.getElementById('gen-progress').classList.add('hidden');
+      document.getElementById('gen-success').classList.remove('hidden');
+      document.getElementById('gen-success').classList.add('flex');
+      document.getElementById('gen-success').style.flexDirection = 'column';
+
+    } catch (e) {
+      await setStatus(modelId, 'error');
+      document.getElementById('gen-upload-area').classList.remove('hidden');
+      document.getElementById('gen-progress').classList.add('hidden');
+      showToast('Erro na geração: ' + e.message, 'error');
+    }
+  }
+
+  function setProgress(pct, label) {
+    document.getElementById('gen-progress-bar').style.width = pct + '%';
+    document.getElementById('gen-progress-label').textContent = label;
+  }
+
+  async function setStatus(modelId, status) {
+    await fetch(`${API}?action=update-status`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ model_id: modelId, status }),
+    });
+  }
+
+  // ── IMAGE RESIZE (canvas) ─────────────────────────────────────────────────
+  function resizeImage(file, maxPx, quality) {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => {
+        let { width: w, height: h } = img;
+        if (w > maxPx || h > maxPx) {
+          const ratio = Math.min(maxPx / w, maxPx / h);
+          w = Math.round(w * ratio);
+          h = Math.round(h * ratio);
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = w; canvas.height = h;
+        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+        const dataUrl = canvas.toDataURL('image/jpeg', quality);
+        resolve({ base64: dataUrl.split(',')[1], mime: 'image/jpeg' });
+      };
+      img.onerror = reject;
+      img.src = URL.createObjectURL(file);
+    });
+  }
+
+  // ── GLB GENERATION (Three.js) ─────────────────────────────────────────────
+  function generateGlb(imageUrl, widthCm, heightCm) {
+    return new Promise((resolve, reject) => {
+      if (!window._THREE || !window._GLTFExporter) {
+        reject(new Error('Three.js ainda carregando. Tente novamente em alguns segundos.'));
+        return;
+      }
+
+      const THREE        = window._THREE;
+      const GLTFExporter = window._GLTFExporter;
+
+      const textureLoader = new THREE.TextureLoader();
+      textureLoader.crossOrigin = 'anonymous';
+
+      textureLoader.load(imageUrl, (texture) => {
+        texture.colorSpace = THREE.SRGBColorSpace;
+        texture.wrapS = THREE.ClampToEdgeWrapping;
+        texture.wrapT = THREE.ClampToEdgeWrapping;
+
+        const widthM  = widthCm  / 100;
+        const heightM = heightCm / 100;
+
+        // Carpet geometry: flat plane with slight vertical extrusion for thickness
+        const scene = new THREE.Scene();
+
+        // Main carpet plane (face up)
+        const geom = new THREE.PlaneGeometry(widthM, heightM, 1, 1);
+        const mat  = new THREE.MeshStandardMaterial({
+          map: texture,
+          roughness: 0.92,
+          metalness: 0.0,
+          side: THREE.DoubleSide,
+        });
+        const plane = new THREE.Mesh(geom, mat);
+        plane.rotation.x = -Math.PI / 2; // lie flat on ground
+        plane.position.y = 0.008;        // ~8mm above ground (carpet thickness)
+        plane.name = 'carpet';
+        scene.add(plane);
+
+        // Thin side/base (BoxGeometry for slight thickness)
+        const boxGeom = new THREE.BoxGeometry(widthM, 0.008, heightM);
+        const boxMat  = new THREE.MeshStandardMaterial({ color: 0x888888, roughness: 1 });
+        const box     = new THREE.Mesh(boxGeom, boxMat);
+        box.position.y = 0.004;
+        box.name = 'carpet_base';
+        scene.add(box);
+
+        // Export
+        const exporter = new GLTFExporter();
+        exporter.parse(
+          scene,
+          (result) => {
+            const bytes  = new Uint8Array(result);
+            let binary   = '';
+            for (let i = 0; i < bytes.byteLength; i++) binary += String.fromCharCode(bytes[i]);
+            resolve(btoa(binary));
+          },
+          (error) => reject(error),
+          { binary: true, embedImages: true }
+        );
+      }, undefined, reject);
+    });
+  }
+
+  // ── AR OVERLAY ────────────────────────────────────────────────────────────
+  function openAr(modelId) {
+    const m = models.find(x => x.id === modelId);
+    if (!m || !m.glb_url) return;
+
+    const mv = document.getElementById('the-model-viewer');
+    mv.src = m.glb_url;
+
+    const mainSize = m.sizes[0];
+    document.getElementById('ar-model-name').textContent = m.name;
+    document.getElementById('ar-model-size').textContent = mainSize
+      ? `${mainSize.width_cm}×${mainSize.height_cm} cm`
+      : 'Escala real';
+
+    document.getElementById('ar-overlay').classList.add('open');
+  }
+
+  function closeArOverlay() {
+    document.getElementById('ar-overlay').classList.remove('open');
+    document.getElementById('the-model-viewer').src = '';
+  }
+
+  // ── COPY AR LINK ──────────────────────────────────────────────────────────
+  async function copyArLink(modelId) {
+    const m = models.find(x => x.id === modelId);
+    if (!m?.glb_url) { showToast('Gere o modelo 3D primeiro.', 'error'); return; }
+
+    const link = `${location.origin}/marketing/carpet-ar.html?id=${modelId}`;
+    try {
+      await navigator.clipboard.writeText(link);
+      showToast('Link copiado!', 'success');
+    } catch {
+      showToast('Não foi possível copiar o link.', 'error');
+    }
+  }
+
+  // ── MODAL HELPERS ─────────────────────────────────────────────────────────
+  function openModal(id) {
+    const el = document.getElementById(id);
+    el.classList.remove('hidden');
+    el.classList.add('flex');
+  }
+  function closeModal(id) {
+    const el = document.getElementById(id);
+    el.classList.add('hidden');
+    el.classList.remove('flex');
+  }
+
+  // Close on backdrop click
+  ['modal-new-model','modal-add-size','modal-generate'].forEach(id => {
+    document.getElementById(id).addEventListener('click', function(e) {
+      if (e.target === this) closeModal(id);
+    });
+  });
+  document.getElementById('ar-overlay').addEventListener('click', function(e) {
+    if (e.target === this) closeArOverlay();
+  });
+
+  // ── UTILS ─────────────────────────────────────────────────────────────────
+  function escHtml(s) {
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  let toastTimer;
+  function showToast(msg, type = 'info') {
+    let toast = document.getElementById('nexus-toast');
+    if (!toast) {
+      toast = document.createElement('div');
+      toast.id = 'nexus-toast';
+      toast.className = 'fixed bottom-6 left-1/2 -translate-x-1/2 z-[999] px-4 py-2.5 rounded-xl font-label text-sm font-600 shadow-lg transition-all duration-200';
+      document.body.appendChild(toast);
+    }
+    clearTimeout(toastTimer);
+    toast.textContent = msg;
+    toast.style.background = type === 'success' ? '#166534' : type === 'error' ? '#991b1b' : '#1e293b';
+    toast.style.color = '#fff';
+    toast.style.opacity = '1';
+    toast.style.transform = 'translateX(-50%) translateY(0)';
+    toastTimer = setTimeout(() => { toast.style.opacity = '0'; }, 3000);
+  }
+
+  // Expõe funções para handlers inline no HTML
+  Object.assign(window, {
+    openNewModelModal, submitNewModel, submitAddSize, openAddSize,
+    openGenerate, handleDragOver, handleDragLeave, handleDrop, handleFileSelect,
+    startGeneration, openAr, closeArOverlay, copyArLink, deleteSize, deleteModel,
+    closeModal,
+  });
+</script>
+</body>
+</html>
