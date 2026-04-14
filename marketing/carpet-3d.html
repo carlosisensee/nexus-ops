@@ -727,19 +727,27 @@
       const { base64, mime, dataUrl } = await resizeImage(selectedFile, 2048, 0.85);
       const glbDataUrl                = await resizeImagePng(selectedFile, 1024);
 
-      // Step 2: remoção de fundo + defringe obrigatório
-      // O defringe preenche pixels transparentes de borda com a cor do vizinho opaco,
-      // evitando o halo branco causado por bilinear filtering no Three.js.
-      setProgress(25, 'Preparando textura…');
+      // Step 2: remoção de fundo com IA (U2-Net via @imgly/background-removal)
+      // Usa ML para segmentar o tapete com precisão — sem flood-fill, sem halo branco.
+      // Na 1ª execução faz download do modelo (~17 MB, fica em cache).
+      setProgress(15, 'Carregando modelo de IA…');
       const isPng = selectedFile.type === 'image/png';
       let cleanDataUrl;
       if (isPng && await pngHasTransparency(glbDataUrl)) {
-        // PNG já tem canal alpha — só aplica defringe (sem flood-fill)
-        cleanDataUrl = await defringeDataUrl(glbDataUrl, 4);
+        // PNG já tem canal alpha preciso — aplica binarize + defringe direto
+        setProgress(22, 'Processando transparência do PNG…');
+        cleanDataUrl = await defringeDataUrl(glbDataUrl, 8);
       } else {
-        // JPEG ou PNG opaco — remove fundo + defringe (já embutido em removeBackground)
-        cleanDataUrl = await removeBackground(glbDataUrl);
+        // JPEG ou PNG com fundo — usa IA para remoção precisa
+        cleanDataUrl = await removeBackgroundAI(glbDataUrl, (key, pct) => {
+          if (key.includes('fetch') || key.includes('load')) {
+            setProgress(15 + Math.round(pct * 0.15), `Carregando modelo de IA… ${pct}%`);
+          } else {
+            setProgress(30 + Math.round(pct * 0.12), `Removendo fundo com IA… ${pct}%`);
+          }
+        });
       }
+      setProgress(43, 'Textura pronta!');
 
       // Step 3: upload thumbnail (imagem original, com fundo) para o card
       setProgress(45, 'Enviando imagem…');
@@ -882,6 +890,72 @@
   // Semeie APENAS dos 4 cantos para evitar comer o tapete quando ele toca a borda.
   // Usa distância Euclidiana (mais precisa que delta por canal).
   // Funciona bem para fotos flatlay em fundo branco/cinza claro/bege.
+  // ── REMOÇÃO DE FUNDO COM IA (@imgly/background-removal) ──────────────────
+  // Carrega o modelo U2-Net via CDN (cache após 1ª carga ~50 MB).
+  // Retorna dataURL PNG com alpha limpo + defringe aplicado.
+  let _bgRemovalLib = null;
+  async function loadBgRemoval() {
+    if (_bgRemovalLib) return _bgRemovalLib;
+    const mod = await import(
+      'https://cdn.jsdelivr.net/npm/@imgly/background-removal@1.4.5/dist/background-removal.js'
+    );
+    _bgRemovalLib = mod;
+    return mod;
+  }
+
+  async function removeBackgroundAI(dataUrl, onProgress) {
+    const { removeBackground: rbg } = await loadBgRemoval();
+
+    // converte dataURL → Blob
+    const res  = await fetch(dataUrl);
+    const blob = await res.blob();
+
+    const resultBlob = await rbg(blob, {
+      publicPath: 'https://cdn.jsdelivr.net/npm/@imgly/background-removal@1.4.5/dist/',
+      model: 'small',   // 'small' (~17 MB) é mais rápido; 'medium' é mais preciso
+      output: {
+        format:  'image/png',
+        quality: 1,
+        type:    'foreground',
+      },
+      progress: (key, current, total) => {
+        if (typeof onProgress === 'function' && total > 0) {
+          const pct = Math.round((current / total) * 100);
+          onProgress(key, pct);
+        }
+      },
+    });
+
+    // Blob → dataURL, depois aplica binarize + defringe
+    const blobUrl = URL.createObjectURL(resultBlob);
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => {
+        URL.revokeObjectURL(blobUrl);
+        const W = img.width, H = img.height;
+        const canvas = document.createElement('canvas');
+        canvas.width = W; canvas.height = H;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0);
+
+        // Binarize alpha (elimina semi-transparências que causam halo)
+        const id = ctx.getImageData(0, 0, W, H);
+        const d  = id.data;
+        for (let px = 0; px < W * H; px++) {
+          const a = d[px * 4 + 3];
+          if (a > 0 && a < 255) d[px * 4 + 3] = a >= 128 ? 255 : 0;
+        }
+        ctx.putImageData(id, 0, 0);
+
+        // Defringe: RGB dos pixels transparentes de borda recebe cor do vizinho opaco
+        defringeAlpha(ctx, W, H, 8);
+        resolve(canvas.toDataURL('image/png'));
+      };
+      img.src = blobUrl;
+    });
+  }
+
+  // ── LEGADO: removeBackground por flood-fill (mantido como fallback) ────────
   function removeBackground(dataUrl, tolerance = 30) {
     return new Promise((resolve) => {
       const img = new Image();
