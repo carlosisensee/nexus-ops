@@ -964,25 +964,21 @@
           }
         }
 
-        // Anti-alias leve na borda final (1px de transição suave)
-        for (let y = 1; y < H - 1; y++) {
-          for (let x = 1; x < W - 1; x++) {
-            const i = (y * W + x) * 4;
-            if (data[i + 3] === 255) {
-              const nb = [
-                ((y-1)*W+x)*4, ((y+1)*W+x)*4,
-                (y*W+(x-1))*4, (y*W+(x+1))*4,
-              ];
-              const t = nb.filter(ni => data[ni+3] === 0).length;
-              if (t > 0) data[i+3] = Math.round(255 * (1 - t * 0.2));
-            }
+        // Binarize alpha: elimina TODOS os pixels semi-transparentes (1–254).
+        // Pixels semi-transparentes na borda são a causa do halo esbranquiçado no AR —
+        // o Three.js blenda a cor do tapete com o fundo (câmera/piso claro) e produz
+        // um anel desbotado. Solução: alpha é 0 ou 255, sem meio-termo.
+        for (let px = 0; px < W * H; px++) {
+          const a = data[px * 4 + 3];
+          if (a > 0 && a < 255) {
+            data[px * 4 + 3] = a >= 128 ? 255 : 0;
           }
         }
 
         ctx.putImageData(imageData, 0, 0);
-        // Defringe: preenche RGB dos pixels transparentes de borda com a cor do
-        // vizinho opaco mais próximo → elimina halo branco no bilinear filtering do Three.js
-        defringeAlpha(ctx, W, H, 4);
+        // Defringe com raio 8: preenche RGB de pixels transparentes com a cor do
+        // vizinho opaco mais próximo → elimina ghost branco no bilinear filtering.
+        defringeAlpha(ctx, W, H, 8);
         resolve(canvas.toDataURL('image/png'));
       };
       img.src = dataUrl;
@@ -1039,6 +1035,14 @@
         canvas.width = W; canvas.height = H;
         const ctx = canvas.getContext('2d');
         ctx.drawImage(img, 0, 0);
+        // Binarize alpha antes do defringe — mesmo tratamento do caminho JPEG
+        const id = ctx.getImageData(0, 0, W, H);
+        const d  = id.data;
+        for (let px = 0; px < W * H; px++) {
+          const a = d[px * 4 + 3];
+          if (a > 0 && a < 255) d[px * 4 + 3] = a >= 128 ? 255 : 0;
+        }
+        ctx.putImageData(id, 0, 0);
         defringeAlpha(ctx, W, H, radius);
         resolve(canvas.toDataURL('image/png'));
       };
@@ -1091,7 +1095,7 @@
           const mat  = new THREE.MeshStandardMaterial({
             map:         texture,
             transparent: true,
-            alphaTest:   0.12,     // corta pixels semi-transparentes de borda
+            alphaTest:   0.5,      // alpha binário (0 ou 255) — 0.5 é o limiar exato
             roughness:   0.92,
             metalness:   0.0,
             side:        THREE.DoubleSide,
