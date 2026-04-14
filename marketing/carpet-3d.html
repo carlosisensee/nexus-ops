@@ -727,14 +727,17 @@
       const { base64, mime, dataUrl } = await resizeImage(selectedFile, 2048, 0.85);
       const glbDataUrl                = await resizeImagePng(selectedFile, 1024);
 
-      // Step 2: remoção de fundo
-      setProgress(25, 'Removendo fundo da imagem…');
+      // Step 2: remoção de fundo + defringe obrigatório
+      // O defringe preenche pixels transparentes de borda com a cor do vizinho opaco,
+      // evitando o halo branco causado por bilinear filtering no Three.js.
+      setProgress(25, 'Preparando textura…');
       const isPng = selectedFile.type === 'image/png';
       let cleanDataUrl;
       if (isPng && await pngHasTransparency(glbDataUrl)) {
-        setProgress(25, 'PNG transparente detectado — usando canal alpha original…');
-        cleanDataUrl = glbDataUrl;
+        // PNG já tem canal alpha — só aplica defringe (sem flood-fill)
+        cleanDataUrl = await defringeDataUrl(glbDataUrl, 4);
       } else {
+        // JPEG ou PNG opaco — remove fundo + defringe (já embutido em removeBackground)
         cleanDataUrl = await removeBackground(glbDataUrl);
       }
 
@@ -977,8 +980,69 @@
         }
 
         ctx.putImageData(imageData, 0, 0);
+        // Defringe: preenche RGB dos pixels transparentes de borda com a cor do
+        // vizinho opaco mais próximo → elimina halo branco no bilinear filtering do Three.js
+        defringeAlpha(ctx, W, H, 4);
         resolve(canvas.toDataURL('image/png'));
       };
+      img.src = dataUrl;
+    });
+  }
+
+  // ── DEFRINGE ──────────────────────────────────────────────────────────────
+  // Percorre pixels transparentes (alpha ≤ 20) e copia o RGB do vizinho opaco
+  // mais próximo dentro do raio dado. O alpha permanece 0 — pixel continua
+  // invisível, mas seu RGB não é mais "branco fantasma".
+  function defringeAlpha(ctx, W, H, radius) {
+    const src  = ctx.getImageData(0, 0, W, H);
+    const data = src.data;
+    const out  = new Uint8ClampedArray(data);
+
+    for (let y = 0; y < H; y++) {
+      for (let x = 0; x < W; x++) {
+        const i = (y * W + x) * 4;
+        if (data[i + 3] > 20) continue; // pixel opaco — não mexe
+
+        // Busca vizinho opaco no raio (anel por anel)
+        let found = false;
+        for (let r = 1; r <= radius && !found; r++) {
+          for (let dy = -r; dy <= r && !found; dy++) {
+            for (let dx = -r; dx <= r && !found; dx++) {
+              if (Math.abs(dy) !== r && Math.abs(dx) !== r) continue; // só borda do anel
+              const nx = x + dx, ny = y + dy;
+              if (nx < 0 || nx >= W || ny < 0 || ny >= H) continue;
+              const ni = (ny * W + nx) * 4;
+              if (data[ni + 3] > 128) {
+                out[i]   = data[ni];
+                out[i+1] = data[ni+1];
+                out[i+2] = data[ni+2];
+                // alpha continua 0
+                found = true;
+              }
+            }
+          }
+        }
+      }
+    }
+
+    src.data.set(out);
+    ctx.putImageData(src, 0, 0);
+  }
+
+  // Aplica defringe em um dataURL PNG (para PNGs já transparentes)
+  function defringeDataUrl(dataUrl, radius) {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => {
+        const W = img.width, H = img.height;
+        const canvas = document.createElement('canvas');
+        canvas.width = W; canvas.height = H;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0);
+        defringeAlpha(ctx, W, H, radius);
+        resolve(canvas.toDataURL('image/png'));
+      };
+      img.onerror = reject;
       img.src = dataUrl;
     });
   }
@@ -1034,7 +1098,7 @@
           const mat  = new THREE.MeshStandardMaterial({
             map:         texture,
             transparent: true,
-            alphaTest:   0.05,     // corta pixels quase-transparentes
+            alphaTest:   0.12,     // corta pixels semi-transparentes de borda
             roughness:   0.92,
             metalness:   0.0,
             side:        THREE.DoubleSide,
