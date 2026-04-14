@@ -1071,18 +1071,11 @@
         // Dimensões reais do tapete em metros
         const realW = widthCm  / 100;
         const realH = heightCm / 100;
-        const realAspect = realW / realH;
-
-        // Ajusta geometria ao aspect ratio da imagem dentro das dimensões reais
-        // (mantém o maior lado; encolhe o menor para não esticar)
-        let geomW, geomH;
-        if (imgAspect >= realAspect) {
-          geomW = realW;
-          geomH = realW / imgAspect;
-        } else {
-          geomH = realH;
-          geomW = realH * imgAspect;
-        }
+        // Sempre usa as dimensões físicas reais — o GLB deve ter exatamente
+        // widthCm × heightCm em metros para que ar-scale="fixed" seja preciso.
+        // A proporção da imagem flatlay não deve influenciar as medidas reais.
+        const geomW = realW;
+        const geomH = realH;
 
         const textureLoader = new THREE.TextureLoader();
         textureLoader.load(dataUrl, (texture) => {
